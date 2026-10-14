@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Müzik Düellosu | Yönetici Paneli</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090D;
+      --surface: #12121A;
+      --surface-light: #1C1C28;
+      --border: #28283C;
+      --amber: #F59E0B;
+      --amber-glow: rgba(245, 158, 11, 0.25);
+      --emerald: #10B981;
+      --crimson: #EF4444;
+      --text: #F3F4F6;
+      --text-muted: #9CA3AF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .logo { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 800; color: #fff; }
+    .logo span { color: var(--amber); }
+    .badge-pill { background: rgba(245, 158, 11, 0.15); color: var(--amber); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .container { max-width: 1200px; width: 100%; margin: 0 auto; padding: 24px 16px; flex: 1; }
+    
+    /* Login Box */
+    #login-box { max-width: 380px; margin: 80px auto; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+    #login-box h2 { margin-bottom: 8px; font-weight: 800; font-size: 22px; }
+    #login-box p { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+    
+    /* Tabs */
+    .tabs { display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .tab-btn { background: none; border: none; color: var(--text-muted); padding: 8px 18px; font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+    .tab-btn.active { background: var(--amber); color: #000; }
+    
+    /* Grid */
+    .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; position: relative; transition: 0.2s; }
+    .card:hover { border-color: rgba(245, 158, 11, 0.5); transform: translateY(-2px); }
+    
+    /* Vinyl Record Component */
+    .vinyl-preview { width: 68px; height: 68px; border-radius: 50%; background: #0c0c10; border: 2.5px solid var(--amber); display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+    .vinyl-preview::after { content: ''; position: absolute; width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.08); pointer-events: none; }
+    .vinyl-center { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; }
+    .vinyl-center img { width: 100%; height: 100%; object-fit: cover; }
+    
+    /* Button & Form */
+    .btn { background: var(--amber); color: #000; border: none; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+    .btn:hover { opacity: 0.9; transform: scale(1.02); }
+    .btn-secondary { background: var(--surface-light); color: #fff; border: 1px solid var(--border); }
+    .btn-danger { background: rgba(239, 68, 68, 0.2); color: var(--crimson); border: 1px solid var(--crimson); }
+    .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 8px; }
+    
+    input, select, textarea { width: 100%; background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; color: #fff; font-size: 14px; outline: none; margin-top: 6px; margin-bottom: 14px; }
+    input:focus, select:focus { border-color: var(--amber); }
+    label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+    .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; }
+    
+    /* Stats Bar */
+    .stats-bar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-box { flex: 1; min-width: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+    .stat-val { font-size: 24px; font-weight: 800; color: var(--amber); margin-top: 4px; }
+    .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <span style="font-size:24px;">💽</span>
+      <div>MÜZİK DÜELLOSU <span>YÖNETİCİ PANELİ</span></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span class="badge-pill">CANLI SUNUCU: 80.253.246.132</span>
+      <button id="logout-btn" class="btn btn-secondary btn-sm" style="display:none;" onclick="logout()">Çıkış Yap</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- GİRİŞ EKRANI -->
+    <div id="login-box">
+      <div style="font-size:42px; margin-bottom:12px;">🔐</div>
+      <h2>Yönetici Girişi</h2>
+      <p>Plak ve kategori içeriklerini Google Play güncellemesi olmadan yönetin.</p>
+      <input type="password" id="admin-pass" placeholder="Yönetici Şifresi" onkeydown="if(event.key==='Enter') login()">
+      <button class="btn" style="width:100%; justify-content:center;" onclick="login()">Giriş Yap</button>
+      <div id="login-err" style="color:var(--crimson); font-size:12px; margin-top:10px; display:none;">Şifre hatalı!</div>
+    </div>
+
+    <!-- ANA PANEL -->
+    <div id="main-panel" style="display:none;">
+      
+      <!-- İstatistikler -->
+      <div class="stats-bar">
+        <div class="stat-box">
+          <div class="stat-label">Toplam Plak (Rozet)</div>
+          <div class="stat-val" id="stat-badges">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Aktif Kategori</div>
+          <div class="stat-val" id="stat-categories">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Mağaza Paketi</div>
+          <div class="stat-val" id="stat-store">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Kayıtlı Oyuncu</div>
+          <div class="stat-val" id="stat-users">0</div>
+        </div>
+      </div>
+
+      <!-- Sekmeler -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('badges')">💽 Plak Koleksiyonu</button>
+        <button class="tab-btn" onclick="switchTab('categories')">📁 Kategoriler</button>
+        <button class="tab-btn" onclick="switchTab('store')">🛍️ Mağaza ve Paketler</button>
+        <button class="tab-btn" onclick="switchTab('users')">👥 Kayıtlı Oyuncular</button>
+      </div>
+
+      <!-- 1. PLAK KOLEKSİYONU SEKMESİ -->
+      <div id="tab-badges">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; font-weight:800;">Oyundaki Sanatçı Plakları (Hot-Update)</h3>
+          <button class="btn" onclick="openBadgeModal()">➕ Yeni Plak Ekle</button>
+        </div>
+        <div class="grid-cards" id="badge-list">
+          <!-- Dinamik olarak dolacak -->
+        </div>
+      </div>
+
+      <!-- 2. KATEGORİLER SEKMESİ -->
+      <div id="tab-categories" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; font-weight:800;">Müzik Kategorileri</h3>
+          <button class="btn" onclick="openCategoryModal()">➕ Yeni Kategori Ekle</button>
+        </div>
+        <div class="grid-cards" id="category-list">
+          <!-- Dinamik olarak dolacak -->
+        </div>
+      </div>
+
+      <!-- 3. MAĞAZA VE PAKETLER SEKMESİ -->
+      <div id="tab-store" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:16px; font-weight:800;">🛍️ Mağaza Paketleri & Altın/Joker Takası (Hot-Update)</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">Uygulama güncellemesi olmadan mağaza paketlerini, fiyat etiketlerini ve ödülleri yönetin.</p>
+          </div>
+          <button class="btn" onclick="openStoreModal()">➕ Yeni Paket Ekle</button>
+        </div>
+        <div class="grid-cards" id="store-list">
+          <!-- Dinamik olarak dolacak -->
+        </div>
+      </div>
+
+      <!-- 4. KULLANICILAR SEKMESİ -->
+      <div id="tab-users" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 style="font-size:18px; font-weight:800; margin:0;">👥 Oyuncu Moderasyon & Yönetim Merkezi</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Kayıtlı oyuncuları görüntüleyin, altın/enerji bakiyelerini düzenleyin, kural ihlallerinde hesabı kısıtlayın.</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="loadUsers()">🔄 Yenile</button>
+          </div>
+        </div>
+
+        <!-- Arama ve Filtreleme Çubuğu -->
+        <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+          <div style="flex:1; min-width:240px;">
+            <input type="text" id="user-search-input" placeholder="🔍 Oyuncu adı veya e-posta ile anında ara..." oninput="filterUsers()" style="margin:0;">
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-sm btn-secondary filter-user-btn" id="filter-all" onclick="setUserFilter('all')" style="border-color:var(--amber);">Tümü (<span id="count-all">0</span>)</button>
+            <button class="btn btn-sm btn-secondary filter-user-btn" id="filter-vip" onclick="setUserFilter('vip')">👑 VIP (<span id="count-vip">0</span>)</button>
+            <button class="btn btn-sm btn-secondary filter-user-btn" id="filter-banned" onclick="setUserFilter('banned')">🚫 Kısıtlılar (<span id="count-banned">0</span>)</button>
+          </div>
+        </div>
+
+        <div id="user-table-wrapper" style="overflow-x:auto;">
+          <!-- Tablo dolacak -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PLAK EKLE/DÜZENLE MODAL -->
+  <div class="modal-overlay" id="badge-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-badge-title" style="font-size:18px; font-weight:800;">➕ Yeni Plak Ekle</h3>
+        <button class="close-btn" onclick="closeBadgeModal()">&times;</button>
+      </div>
+      <form id="badge-form" onsubmit="saveBadge(event)">
+        <input type="hidden" id="b-id">
+        
+        <label>Sanatçı Adı *</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="b-artist" placeholder="Örn: Tarkan, Müslüm Gürses, Yıldız Tilbe" required>
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap; margin-top:6px; margin-bottom:14px;" onclick="fetchArtistPhoto()">🔍 Fotoğrafı Çek</button>
+        </div>
+
+        <label>Kategori *</label>
+        <select id="b-category" required>
+          <!-- Kategoriler dinamik dolacak -->
+        </select>
+
+        <label>Plak Unvanı *</label>
+        <input type="text" id="b-title" placeholder="Örn: Popun Kralı, Delikanlım Efsanesi" required>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Seviye / Tier *</label>
+            <select id="b-tier" onchange="autoFillShards()">
+              <option value="Bronz">Bronz (15 Parça)</option>
+              <option value="Gümüş">Gümüş (30 Parça)</option>
+              <option value="Altın">Altın (45 Parça)</option>
+              <option value="Elmas">Elmas (60 Parça)</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label>Gereken Parça (Shard) *</label>
+            <input type="number" id="b-shards" value="45" required>
+          </div>
+        </div>
+
+        <label>Fotoğraf URL (Deezer CDN / Otomatik Çekilir) *</label>
+        <input type="url" id="b-image" placeholder="https://..." required>
+
+        <!-- Önizleme -->
+        <div style="display:flex; align-items:center; gap:16px; background:var(--surface-light); padding:12px; border-radius:14px; margin-bottom:18px;">
+          <div class="vinyl-preview">
+            <div class="vinyl-center">
+              <img id="b-preview-img" src="https://cdn-images.dzcdn.net/images/artist/28634a4ad808e5b6bbb6714f06bd5fe8/250x250-000000-80-0-0.jpg" alt="Preview">
+            </div>
+          </div>
+          <div>
+            <div id="b-preview-name" style="font-weight:800; font-size:15px;">Sanatçı Adı</div>
+            <div id="b-preview-tier" style="font-size:12px; color:var(--amber);">Altın Plak • 45 Parça</div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeBadgeModal()">İptal</button>
+          <button type="submit" class="btn">💾 Canlıya Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- KATEGORİ / SANATÇI ODASI MODAL -->
+  <div class="modal-overlay" id="category-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-category-title" style="font-size:18px; font-weight:800;">➕ Yeni Kategori / Sanatçı Odası</h3>
+        <button class="close-btn" onclick="closeCategoryModal()">&times;</button>
+      </div>
+      <form id="category-form" onsubmit="saveCategory(event)">
+        <input type="hidden" id="c-id">
+
+        <label>Hızlı Şablon Seç:</label>
+        <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setCategoryTemplate('artist')">🎤 Sanatçı Özel (Tarkan)</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setCategoryTemplate('karadeniz')">🌊 Karadeniz Havası</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setCategoryTemplate('genre')">📻 Pop / Rock</button>
+        </div>
+
+        <label>Kategori / Oda Başlığı *</label>
+        <input type="text" id="c-title" placeholder="Örn: Karadeniz Havası veya Tarkan Özel Düello" required oninput="autoSuggestQuery()">
+
+        <label>Alt Açıklama (Sanatçılar / Detay)</label>
+        <input type="text" id="c-subtitle" placeholder="Örn: Tulum, kemençe ve en sevilen Karadeniz türküleri...">
+
+        <label>Sanatçı Filtresi / Arama Terimi * (Apple Music Otomatik Çeker)</label>
+        <input type="text" id="c-query" placeholder="Örn: Karadeniz veya Kazım Koyuncu, Volkan Konak, Resul Dindar" required>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:-8px; margin-bottom:14px; line-height:1.5;">
+          💡 <b>İpucu:</b> Tek sanatçı için (ör: <b>Tarkan</b>), tür/kelime için (ör: <b>Karadeniz</b>) yazabilirsiniz. En zengin şarkı çeşitliliği için sanatçıları virgülle ayırarak yazabilirsiniz (ör: <b>Kazım Koyuncu, Volkan Konak, Resul Dindar, Koliva</b>).
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Kart Rengi (Hex)</label>
+            <div style="display:flex; gap:6px;">
+              <input type="color" id="c-color-picker" value="#F59E0B" onchange="document.getElementById('c-color').value=this.value" style="width:45px; height:38px; padding:2px; border-radius:8px; cursor:pointer;">
+              <input type="text" id="c-color" value="#F59E0B" required style="flex:1;">
+            </div>
+          </div>
+          <div style="flex:1;">
+            <label>İkon</label>
+            <select id="c-icon">
+              <option value="star">⭐ Yıldız / Spotlight (star)</option>
+              <option value="mic">🎤 Mikrofon / Vokal (mic)</option>
+              <option value="album">💽 Plak / Albüm (album)</option>
+              <option value="fire">🔥 Alev / Hit (fire)</option>
+              <option value="bolt">⚡ Şimşek / Rock (bolt)</option>
+              <option value="headphones">🎧 Kulaklık (headphones)</option>
+              <option value="sparkles">✨ Parıltı / Pop (sparkles)</option>
+              <option value="speaker">🔊 Hoparlör / Rap (speaker)</option>
+              <option value="note">🎵 Müzik Notası / Arabesk (note)</option>
+              <option value="radio">📻 Radyo / Nostalji (radio)</option>
+              <option value="shuffle">🔀 Karışık (shuffle)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Menü Sırası (Display Order)</label>
+            <input type="number" id="c-order" value="1">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">İptal</button>
+          <button type="submit" class="btn">💾 Canlıya Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAĞAZA PAKETİ EKLE/DÜZENLE MODAL -->
+  <div class="modal-overlay" id="store-modal">
+    <div class="modal-content" style="max-width:560px;">
+      <div class="modal-header">
+        <h3 style="font-size:18px; font-weight:800;" id="modal-store-title">🛍️ Mağaza Paketi Düzenle</h3>
+        <button class="close-btn" onclick="closeStoreModal()">&times;</button>
+      </div>
+
+      <form onsubmit="saveStoreItem(event)">
+        <div style="display:flex; gap:12px;">
+          <div style="flex:2;">
+            <label>Paket ID (SKU / Ürün Kimliği)</label>
+            <input type="text" id="s-id" required placeholder="vip_club, coins_1500, gold_joker_1">
+          </div>
+          <div style="flex:1;">
+            <label>İkon / Emoji</label>
+            <input type="text" id="s-icon" placeholder="👑, 🪙, ⚡, 🎯" value="🛍️">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Paket Türü</label>
+            <select id="s-type" onchange="onStoreTypeChange()">
+              <option value="in_app">Google Play (Gerçek Para Satın Alımı)</option>
+              <option value="in_game">Oyun İçi (Altın Karşılığı Takas)</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label>Menü Sırası (Display Order)</label>
+            <input type="number" id="s-order" value="1">
+          </div>
+        </div>
+
+        <label>Paket Başlığı</label>
+        <input type="text" id="s-title" required placeholder="Örn: 1.500 Altın Sandığı">
+
+        <label>Açıklama / Alt Metin</label>
+        <input type="text" id="s-subtitle" placeholder="Örn: 🎁 +100 Altın Bonus Hediye">
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Fiyat Etiketi (Görünen)</label>
+            <input type="text" id="s-price-label" required placeholder="₺49,99 veya 250 Altın">
+          </div>
+          <div style="flex:1;" id="s-coins-cost-group">
+            <label>Altın Maliyeti (Oyun İçi ise)</label>
+            <input type="number" id="s-coins-cost" value="0" placeholder="0">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Rozet Metni (Badge)</label>
+            <input type="text" id="s-badge-label" placeholder="POPÜLER, VIP, AVANTAJLI, %50 JOKER">
+          </div>
+          <div style="flex:1;">
+            <label>Rozet Rengi (HEX)</label>
+            <input type="text" id="s-badge-color" placeholder="#F59E0B" value="#F59E0B">
+          </div>
+        </div>
+
+        <!-- Ödül İçeriği (Recipe) -->
+        <div style="background:var(--surface-light); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; font-weight:800; color:var(--amber); margin-bottom:10px; text-transform:uppercase;">🎁 Paket Ödül İçeriği (Hesaba Tanımlanacaklar)</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+            <div>
+              <label>🪙 Verilecek Altın</label>
+              <input type="number" id="s-rew-coins" value="0">
+            </div>
+            <div>
+              <label>⚡ Verilecek Enerji</label>
+              <input type="number" id="s-rew-energy" value="0">
+            </div>
+            <div>
+              <label>🎯 Verilecek Joker</label>
+              <input type="number" id="s-rew-jokers" value="0">
+            </div>
+          </div>
+          <div style="display:flex; gap:24px; margin-top:8px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; text-transform:none;">
+              <input type="checkbox" id="s-rew-noads" style="width:auto; margin:0;"> 🛡️ Reklamları Ömür Boyu Kaldır
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; text-transform:none;">
+              <input type="checkbox" id="s-rew-vip" style="width:auto; margin:0;"> 👑 VIP Kulüp Statüsü Ver
+            </label>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; text-transform:none;">
+            <input type="checkbox" id="s-active" checked style="width:auto; margin:0;"> 🟢 Paketi Mağazada Aktif Göster
+          </label>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeStoreModal()">İptal</button>
+          <button type="submit" class="btn">💾 Canlıya Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- OYUNCU DÜZENLEME MODAL -->
+  <div class="modal-overlay" id="user-edit-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:18px; font-weight:800; margin:0;">✏️ Oyuncu Bilgilerini & Bakiyesini Düzenle</h3>
+        <button class="close-btn" onclick="closeUserEditModal()">&times;</button>
+      </div>
+      <form id="user-edit-form" onsubmit="saveUserChanges(event)">
+        <input type="hidden" id="u-google-id">
+
+        <label>Oyuncu Adı</label>
+        <input type="text" id="u-name" required>
+
+        <label>E-Posta (Google Hesabı)</label>
+        <input type="text" id="u-email" disabled style="opacity:0.6; cursor:not-allowed;">
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Altın Bakiyesi 🪙</label>
+            <input type="number" id="u-coins" min="0" required>
+          </div>
+          <div style="flex:1;">
+            <label>Enerji ⚡ (Max 150)</label>
+            <input type="number" id="u-energy" min="0" max="150" required>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>50/50 Joker Hakkı 🃏</label>
+            <input type="number" id="u-powerups" min="0" required>
+          </div>
+        </div>
+
+        <div style="background:var(--surface-light); padding:14px; border-radius:14px; margin-bottom:16px; border:1px solid var(--border);">
+          <div style="font-size:12px; font-weight:800; margin-bottom:10px; color:var(--text-muted); text-transform:uppercase;">Ayrıcalıklar & Paketler</div>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px; text-transform:none; font-size:13px; color:#fff;">
+            <input type="checkbox" id="u-is-vip" style="width:auto; margin:0;">
+            👑 VIP Kulüp Üyesi Yap (Özel Avatar & Statü)
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin:0; text-transform:none; font-size:13px; color:#fff;">
+            <input type="checkbox" id="u-has-no-ads" style="width:auto; margin:0;">
+            🛡️ Reklamları Kaldır (No-Ads Paketi Tanımla)
+          </label>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeUserEditModal()">İptal</button>
+          <button type="submit" class="btn">💾 Değişiklikleri Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- OYUNCU PLAKLARI DETAY MODAL -->
+  <div class="modal-overlay" id="user-badges-modal">
+    <div class="modal-content" style="max-width:680px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size:18px; font-weight:800; margin:0;" id="user-badges-title">💿 Plak Koleksiyonu Detayı</h3>
+          <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;" id="user-badges-subtitle">Oyuncunun kazandığı parçalar ve açtığı plaklar</p>
+        </div>
+        <button class="close-btn" onclick="closeUserBadgesModal()">&times;</button>
+      </div>
+      <div id="user-badges-content" style="max-height:60vh; overflow-y:auto; padding-right:6px;">
+        <!-- Plaklar dolacak -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem('admin_token') || '';
+    let globalConfig = { categories: [], badges: [] };
+
+    window.onload = () => {
+      if (token) {
+        verifySession();
+      }
+    };
+
+    function login() {
+      const pass = document.getElementById('admin-pass').value;
+      fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.token) {
+          token = data.token;
+          localStorage.setItem('admin_token', token);
+          document.getElementById('login-err').style.display = 'none';
+          showMainPanel();
+        } else {
+          document.getElementById('login-err').style.display = 'block';
+        }
+      })
+      .catch(() => {
+        document.getElementById('login-err').style.display = 'block';
+      });
+    }
+
+    function logout() {
+      token = '';
+      localStorage.removeItem('admin_token');
+      document.getElementById('main-panel').style.display = 'none';
+      document.getElementById('login-box').style.display = 'block';
+      document.getElementById('logout-btn').style.display = 'none';
+    }
+
+    function verifySession() {
+      showMainPanel();
+    }
+
+    function showMainPanel() {
+      document.getElementById('login-box').style.display = 'none';
+      document.getElementById('main-panel').style.display = 'block';
+      document.getElementById('logout-btn').style.display = 'block';
+      loadAllData();
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-badges').style.display = tab === 'badges' ? 'block' : 'none';
+      document.getElementById('tab-categories').style.display = tab === 'categories' ? 'block' : 'none';
+      document.getElementById('tab-store').style.display = tab === 'store' ? 'block' : 'none';
+      document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
+      if (tab === 'users') loadUsers();
+      if (tab === 'store') loadStoreItems();
+    }
+
+    function loadAllData() {
+      fetch('/api/config/all')
+        .then(r => r.json())
+        .then(data => {
+          globalConfig = data;
+          document.getElementById('stat-badges').innerText = (data.badges || []).length;
+          document.getElementById('stat-categories').innerText = (data.categories || []).length;
+          document.getElementById('stat-store').innerText = (data.store_items || []).length;
+          renderBadges(data.badges || []);
+          renderCategories(data.categories || []);
+          renderStoreItems(data.store_items || []);
+          populateCategorySelect(data.categories || []);
+        });
+
+      fetch('/api/admin/stats', { headers: { 'Authorization': token } })
+        .then(r => r.json())
+        .then(d => {
+          if (d.usersCount !== undefined) {
+            document.getElementById('stat-users').innerText = d.usersCount;
+          }
+        });
+    }
+
+    function renderBadges(badges) {
+      const container = document.getElementById('badge-list');
+      container.innerHTML = badges.map(b => `
+        <div class="card">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div class="vinyl-preview">
+              <div class="vinyl-center">
+                <img src="${b.image_url}" alt="${b.artist_name}" onerror="this.src='https://via.placeholder.com/150'">
+              </div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:800; font-size:16px;">${b.artist_name}</div>
+              <div style="font-size:12px; color:var(--text-muted); margin:2px 0;">${b.title}</div>
+              <span class="badge-pill" style="font-size:10px;">${b.tier} • ${b.total_shards} Parça</span>
+            </div>
+          </div>
+          <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick='editBadge(${JSON.stringify(b)})'>Düzenle</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteBadge('${b.id}')">Sil</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderCategories(categories) {
+      const container = document.getElementById('category-list');
+      container.innerHTML = categories.map(c => `
+        <div class="card">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:16px; height:16px; border-radius:50%; background:${c.color_hex || '#F59E0B'}; box-shadow:0 0 10px ${c.color_hex || '#F59E0B'}88;"></div>
+              <div style="font-weight:800; font-size:16px;">${c.title}</div>
+            </div>
+            <span class="badge-pill" style="font-size:11px;">Sıra: #${c.display_order || 0}</span>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${c.subtitle || ''}</div>
+          <div style="font-size:12px; color:var(--amber); margin-bottom:12px;">
+            <b>🔍 Filtre / Sanatçı:</b> ${c.search_query || c.title}
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick='editCategory(${JSON.stringify(c)})'>Düzenle</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c.id}')">Sil</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setCategoryTemplate(type) {
+      if (type === 'artist') {
+        document.getElementById('c-title').value = 'Tarkan Özel';
+        document.getElementById('c-subtitle').value = "Megastar'ın en sevilen efsane şarkıları";
+        document.getElementById('c-query').value = 'Tarkan';
+        document.getElementById('c-color').value = '#F59E0B';
+        document.getElementById('c-color-picker').value = '#F59E0B';
+        document.getElementById('c-icon').value = 'star';
+      } else if (type === 'karadeniz') {
+        document.getElementById('c-title').value = 'Karadeniz Havası';
+        document.getElementById('c-subtitle').value = 'Tulum, kemençe ve en sevilen Karadeniz türküleri';
+        document.getElementById('c-query').value = 'Kazım Koyuncu, Volkan Konak, Resul Dindar, Koliva, Ekin Uzunlar';
+        document.getElementById('c-color').value = '#10B981';
+        document.getElementById('c-color-picker').value = '#10B981';
+        document.getElementById('c-icon').value = 'music_note';
+      } else {
+        document.getElementById('c-title').value = 'Türkçe Pop Hit';
+        document.getElementById('c-subtitle').value = 'En popüler hit şarkılar';
+        document.getElementById('c-query').value = 'turkce pop hit';
+        document.getElementById('c-color').value = '#EC4899';
+        document.getElementById('c-color-picker').value = '#EC4899';
+        document.getElementById('c-icon').value = 'sparkles';
+      }
+    }
+
+    function autoSuggestQuery() {
+      const title = document.getElementById('c-title').value.trim();
+      const queryInput = document.getElementById('c-query');
+      if (!document.getElementById('c-id').value && queryInput.value === '') {
+        const clean = title.replace(/(Özel|Düello|Klasikleri|Hit|Mix|Şarkıları)/gi, '').trim();
+        if (clean) queryInput.value = clean;
+      }
+    }
+
+    function openCategoryModal() {
+      document.getElementById('c-id').value = '';
+      document.getElementById('c-title').value = '';
+      document.getElementById('c-subtitle').value = '';
+      document.getElementById('c-query').value = '';
+      document.getElementById('c-color').value = '#F59E0B';
+      document.getElementById('c-color-picker').value = '#F59E0B';
+      document.getElementById('c-icon').value = 'album';
+      document.getElementById('c-order').value = '1';
+      document.getElementById('modal-category-title').innerText = '➕ Yeni Kategori / Sanatçı Odası';
+      document.getElementById('category-modal').style.display = 'flex';
+    }
+
+    function closeCategoryModal() {
+      document.getElementById('category-modal').style.display = 'none';
+    }
+
+    function editCategory(c) {
+      document.getElementById('c-id').value = c.id;
+      document.getElementById('c-title').value = c.title;
+      document.getElementById('c-subtitle').value = c.subtitle || '';
+      document.getElementById('c-query').value = c.search_query || '';
+      document.getElementById('c-color').value = c.color_hex || '#F59E0B';
+      document.getElementById('c-color-picker').value = c.color_hex || '#F59E0B';
+      document.getElementById('c-icon').value = c.icon_name || 'album';
+      document.getElementById('c-order').value = c.display_order || 1;
+      document.getElementById('modal-category-title').innerText = '✏️ Kategori Düzenle';
+      document.getElementById('category-modal').style.display = 'flex';
+    }
+
+    function saveCategory(e) {
+      e.preventDefault();
+      const id = document.getElementById('c-id').value || ('cat_' + Date.now());
+      const title = document.getElementById('c-title').value.trim();
+      const subtitle = document.getElementById('c-subtitle').value.trim();
+      const search_query = document.getElementById('c-query').value.trim();
+      const color_hex = document.getElementById('c-color').value.trim();
+      const icon_name = document.getElementById('c-icon').value;
+      const display_order = parseInt(document.getElementById('c-order').value) || 1;
+
+      fetch('/api/admin/categories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ id, title, subtitle, search_query, color_hex, icon_name, display_order })
+      })
+      .then(r => r.json())
+      .then(d => {
+        closeCategoryModal();
+        loadAllData();
+      });
+    }
+
+    function deleteCategory(id) {
+      if (!confirm('Bu kategoriyi silmek istediğinizden emin misiniz?')) return;
+      fetch('/api/admin/categories/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ id })
+      })
+      .then(r => r.json())
+      .then(() => loadAllData());
+    }
+
+    function populateCategorySelect(categories) {
+      const select = document.getElementById('b-category');
+      select.innerHTML = categories.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+    }
+
+    let allUsers = [];
+    let currentUserFilter = 'all';
+
+    function loadUsers() {
+      fetch('/api/admin/users', { headers: { 'Authorization': token } })
+        .then(r => r.json())
+        .then(users => {
+          allUsers = Array.isArray(users) ? users : [];
+          
+          // Sayaçları güncelle
+          const vipCount = allUsers.filter(u => u.is_vip).length;
+          const bannedCount = allUsers.filter(u => u.is_banned).length;
+          document.getElementById('count-all').innerText = allUsers.length;
+          document.getElementById('count-vip').innerText = vipCount;
+          document.getElementById('count-banned').innerText = bannedCount;
+          const statUsers = document.getElementById('stat-users');
+          if (statUsers) statUsers.innerText = allUsers.length;
+
+          filterUsers();
+        })
+        .catch(err => {
+          console.error('Kullanıcılar yüklenemedi:', err);
+        });
+    }
+
+    function setUserFilter(filter) {
+      currentUserFilter = filter;
+      document.querySelectorAll('.filter-user-btn').forEach(btn => {
+        btn.style.borderColor = 'var(--border)';
+        btn.style.color = 'var(--text-muted)';
+      });
+      const activeBtn = document.getElementById(`filter-${filter}`);
+      if (activeBtn) {
+        activeBtn.style.borderColor = 'var(--amber)';
+        activeBtn.style.color = '#fff';
+      }
+      filterUsers();
+    }
+
+    function filterUsers() {
+      const q = (document.getElementById('user-search-input')?.value || '').toLowerCase().trim();
+      let filtered = allUsers.filter(u => {
+        const matchesQuery = !q || 
+          (u.name && u.name.toLowerCase().includes(q)) || 
+          (u.email && u.email.toLowerCase().includes(q)) ||
+          (u.google_id && u.google_id.toLowerCase().includes(q));
+        
+        if (!matchesQuery) return false;
+        if (currentUserFilter === 'vip') return u.is_vip === 1 || u.is_vip === true;
+        if (currentUserFilter === 'banned') return u.is_banned === 1 || u.is_banned === true;
+        return true;
+      });
+
+      renderUsersTable(filtered);
+    }
+
+    function renderUsersTable(users) {
+      const wrapper = document.getElementById('user-table-wrapper');
+      if (!users || users.length === 0) {
+        wrapper.innerHTML = `
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:36px; text-align:center; color:var(--text-muted);">
+            <div style="font-size:32px; margin-bottom:8px;">🔍</div>
+            <div style="font-weight:700;">Aramanıza uygun oyuncu bulunamadı.</div>
+          </div>
+        `;
+        return;
+      }
+
+      wrapper.innerHTML = `
+        <table style="width:100%; text-align:left; border-collapse:collapse; background:var(--surface); border-radius:16px; overflow:hidden; border:1px solid var(--border);">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border); background:var(--surface-light); color:var(--text-muted); font-size:12px;">
+              <th style="padding:14px 16px;">OYUNCU</th>
+              <th style="padding:14px 16px;">E-POSTA</th>
+              <th style="padding:14px 16px;">ALTIN</th>
+              <th style="padding:14px 16px;">ENERJİ</th>
+              <th style="padding:14px 16px;">JOKER</th>
+              <th style="padding:14px 16px;">DURUM</th>
+              <th style="padding:14px 16px;">SON GİRİŞ</th>
+              <th style="padding:14px 16px; text-align:right;">İŞLEMLER</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${users.map(u => {
+              const isBanned = u.is_banned === 1 || u.is_banned === true;
+              const isVip = u.is_vip === 1 || u.is_vip === true;
+              const lastLoginDate = u.last_login ? new Date(u.last_login).toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '-';
+              
+              // Rozet / Plak istatistiği
+              let badgeInfo = '0 Plak';
+              try {
+                if (u.badges_data) {
+                  const bObj = JSON.parse(u.badges_data);
+                  const unlocked = Object.values(bObj).filter(b => b.isUnlocked).length;
+                  const totalShards = Object.values(bObj).reduce((sum, b) => sum + (b.currentShards || 0), 0);
+                  badgeInfo = `${unlocked} Açık (${totalShards} 💿)`;
+                }
+              } catch (_) {}
+
+              return `
+                <tr style="border-bottom:1px solid var(--border); font-size:13px; ${isBanned ? 'background:rgba(239,68,68,0.06);' : ''}">
+                  <td style="padding:12px 16px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <div style="width:34px; height:34px; border-radius:50%; background:var(--surface-light); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:16px;">
+                        ${u.avatar && u.avatar.startsWith('http') ? `<img src="${u.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : (u.avatar || '🎧')}
+                      </div>
+                      <div>
+                        <div style="font-weight:800; color:#fff;">${escapeHtml(u.name || 'Oyuncu')}</div>
+                        <div style="font-size:11px; color:var(--text-muted); cursor:pointer;" onclick="openUserBadgesModal('${u.google_id}')" title="Koleksiyonu İncele">
+                          💿 ${badgeInfo}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="padding:12px 16px; color:var(--text-muted); font-size:12px;">${escapeHtml(u.email || '-')}</td>
+                  <td style="padding:12px 16px; color:var(--amber); font-weight:800;">${(u.coins || 0).toLocaleString()} 🪙</td>
+                  <td style="padding:12px 16px; font-weight:700;">${u.energy || 0} ⚡</td>
+                  <td style="padding:12px 16px; font-weight:700; color:#60A5FA;">${u.powerup_count || 0} 🃏</td>
+                  <td style="padding:12px 16px;">
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                      ${isBanned ? `<span style="background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid #ef4444; padding:3px 8px; border-radius:8px; font-size:11px; font-weight:800;" title="${escapeHtml(u.ban_reason || 'Kural ihlali')}">🚫 Kısıtlandı</span>` : ''}
+                      ${isVip ? '<span class="badge-pill" style="background:#F59E0B; color:#000; font-weight:800;">👑 VIP</span>' : (!isBanned ? '<span style="color:var(--text-muted); font-size:12px;">Standart</span>' : '')}
+                      ${u.has_no_ads ? '<span class="badge-pill" style="background:#10B981; color:#000;">🛡️ Reklamsız</span>' : ''}
+                    </div>
+                  </td>
+                  <td style="padding:12px 16px; color:var(--text-muted); font-size:11px;">${lastLoginDate}</td>
+                  <td style="padding:12px 16px; text-align:right;">
+                    <div style="display:inline-flex; gap:6px;">
+                      <button class="btn btn-secondary btn-sm" onclick="openUserEditModal('${u.google_id}')" title="Bakiyeleri ve Bilgileri Düzenle">✏️ Düzenle</button>
+                      <button class="btn btn-secondary btn-sm" onclick="openUserBadgesModal('${u.google_id}')" title="Plak Koleksiyonunu İncele">💿 Plaklar</button>
+                      <button class="btn ${isBanned ? 'btn-secondary' : 'btn-danger'} btn-sm" onclick="toggleUserBan('${u.google_id}', ${isBanned})" title="${isBanned ? 'Yasağı Kaldır' : 'Hesabı Kısıtla'}">
+                        ${isBanned ? '✅ Kaldır' : '🚫 Kısıtla'}
+                      </button>
+                      <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.google_id}')" title="Oyuncuyu Tamamen Sil">🗑️</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function openUserEditModal(googleId) {
+      const u = allUsers.find(x => String(x.google_id) === String(googleId));
+      if (!u) return;
+
+      document.getElementById('u-google-id').value = u.google_id;
+      document.getElementById('u-name').value = u.name || '';
+      document.getElementById('u-email').value = u.email || '';
+      document.getElementById('u-coins').value = u.coins || 0;
+      document.getElementById('u-energy').value = u.energy || 10;
+      document.getElementById('u-powerups').value = u.powerup_count || 0;
+      document.getElementById('u-is-vip').checked = u.is_vip === 1 || u.is_vip === true;
+      document.getElementById('u-has-no-ads').checked = u.has_no_ads === 1 || u.has_no_ads === true;
+
+      document.getElementById('user-edit-modal').style.display = 'flex';
+    }
+
+    function closeUserEditModal() {
+      document.getElementById('user-edit-modal').style.display = 'none';
+    }
+
+    function saveUserChanges(e) {
+      e.preventDefault();
+      const google_id = document.getElementById('u-google-id').value;
+      const name = document.getElementById('u-name').value.trim();
+      const coins = parseInt(document.getElementById('u-coins').value) || 0;
+      const energy = parseInt(document.getElementById('u-energy').value) || 0;
+      const powerup_count = parseInt(document.getElementById('u-powerups').value) || 0;
+      const is_vip = document.getElementById('u-is-vip').checked ? 1 : 0;
+      const has_no_ads = document.getElementById('u-has-no-ads').checked ? 1 : 0;
+
+      fetch('/api/admin/users/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ google_id, name, coins, energy, powerup_count, is_vip, has_no_ads })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          closeUserEditModal();
+          loadUsers();
+        } else {
+          alert('Güncelleme hatası: ' + (d.error || 'Bilinmeyen hata'));
+        }
+      })
+      .catch(err => alert('Sunucu hatası: ' + err.message));
+    }
+
+    function toggleUserBan(googleId, isCurrentlyBanned) {
+      const u = allUsers.find(x => String(x.google_id) === String(googleId));
+      if (!u) return;
+
+      if (isCurrentlyBanned) {
+        if (!confirm(`${u.name} (${u.email}) üzerindeki kısıtlamayı kaldırmak istiyor musunuz?`)) return;
+        fetch('/api/admin/users/ban', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': token },
+          body: JSON.stringify({ google_id: googleId, is_banned: 0, ban_reason: '' })
+        })
+        .then(r => r.json())
+        .then(() => loadUsers());
+      } else {
+        const reason = prompt(`${u.name} oyuncusunu kısıtlama sebebini yazınız (Oyuncu ekranında gösterilir):`, 'Kural ihlali / Hileli işlem şüphesi');
+        if (reason === null) return;
+        fetch('/api/admin/users/ban', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': token },
+          body: JSON.stringify({ google_id: googleId, is_banned: 1, ban_reason: reason })
+        })
+        .then(r => r.json())
+        .then(() => loadUsers());
+      }
+    }
+
+    function deleteUser(googleId) {
+      const u = allUsers.find(x => String(x.google_id) === String(googleId));
+      if (!u) return;
+
+      if (!confirm(`⚠️ DİKKAT: ${u.name} (${u.email}) oyuncusu ve tüm veritabanı kayıtları KALICI OLARAK silinecektir!\n\nEmin misiniz?`)) return;
+
+      fetch('/api/admin/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ google_id: googleId })
+      })
+      .then(r => r.json())
+      .then(() => loadUsers());
+    }
+
+    function openUserBadgesModal(googleId) {
+      const u = allUsers.find(x => String(x.google_id) === String(googleId));
+      if (!u) return;
+
+      document.getElementById('user-badges-title').innerText = `💿 ${u.name} - Plak Koleksiyonu`;
+      document.getElementById('user-badges-subtitle').innerText = `${u.email} | Altın: ${u.coins} 🪙 | Enerji: ${u.energy} ⚡`;
+
+      let badgesData = {};
+      try {
+        if (u.badges_data) badgesData = JSON.parse(u.badges_data);
+      } catch (_) {}
+
+      const allBadgesList = globalConfig.badges || [];
+      const container = document.getElementById('user-badges-content');
+
+      if (allBadgesList.length === 0 && Object.keys(badgesData).length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); padding:20px; text-align:center;">Henüz toplanmış bir plak bulunmuyor.</div>';
+        document.getElementById('user-badges-modal').style.display = 'flex';
+        return;
+      }
+
+      // İlerlemesi olan veya açılmış plakları grupla
+      const userBadgeEntries = Object.entries(badgesData);
+      const unlockedCount = userBadgeEntries.filter(([_, b]) => b.isUnlocked).length;
+      const totalCollectedShards = userBadgeEntries.reduce((sum, [_, b]) => sum + (b.currentShards || 0), 0);
+
+      let html = `
+        <div style="display:flex; gap:16px; margin-bottom:16px; background:var(--surface-light); padding:14px; border-radius:14px; border:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="font-size:11px; color:var(--text-muted);">Tamamlanan Plaklar</div>
+            <div style="font-size:20px; font-weight:800; color:var(--amber);">${unlockedCount} Adet</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:var(--text-muted);">Toplam Biriken Parça</div>
+            <div style="font-size:20px; font-weight:800; color:#60A5FA;">${totalCollectedShards} Shard 💿</div>
+          </div>
+        </div>
+      `;
+
+      if (userBadgeEntries.length === 0) {
+        html += '<div style="color:var(--text-muted); padding:20px; text-align:center;">Bu oyuncu henüz hiç maç oynamamış veya parçası bulunmuyor.</div>';
+      } else {
+        html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">';
+        userBadgeEntries.forEach(([bid, b]) => {
+          const badgeMeta = allBadgesList.find(x => x.id === bid) || {};
+          const artistName = badgeMeta.artist_name || bid;
+          const tier = badgeMeta.tier || 'Altın';
+          const maxShards = badgeMeta.total_shards || 45;
+          const current = b.currentShards || 0;
+          const isUnlocked = b.isUnlocked;
+
+          html += `
+            <div style="background:var(--surface-light); border:1px solid ${isUnlocked ? 'var(--amber)' : 'var(--border)'}; border-radius:12px; padding:12px; display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:50%; background:#000; border:2px solid ${isUnlocked ? 'var(--amber)' : 'var(--border)'}; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                ${badgeMeta.image_url ? `<img src="${badgeMeta.image_url}" style="width:100%; height:100%; object-fit:cover;">` : '💽'}
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div style="font-weight:800; font-size:13px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(artistName)}</div>
+                <div style="font-size:11px; color:var(--text-muted);">${tier} - ${isUnlocked ? '<span style="color:var(--amber); font-weight:800;">AÇILDI 👑</span>' : `${current}/${maxShards} Parça`}</div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+      document.getElementById('user-badges-modal').style.display = 'flex';
+    }
+
+    function closeUserBadgesModal() {
+      document.getElementById('user-badges-modal').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function openBadgeModal() {
+      document.getElementById('b-id').value = '';
+      document.getElementById('b-artist').value = '';
+      document.getElementById('b-title').value = '';
+      document.getElementById('b-tier').value = 'Altın';
+      document.getElementById('b-shards').value = '45';
+      document.getElementById('b-image').value = '';
+      document.getElementById('modal-badge-title').innerText = '➕ Yeni Plak Ekle';
+      document.getElementById('badge-modal').style.display = 'flex';
+    }
+
+    function closeBadgeModal() {
+      document.getElementById('badge-modal').style.display = 'none';
+    }
+
+    function autoFillShards() {
+      const tier = document.getElementById('b-tier').value;
+      const shardsInput = document.getElementById('b-shards');
+      if (tier === 'Bronz') shardsInput.value = 15;
+      else if (tier === 'Gümüş') shardsInput.value = 30;
+      else if (tier === 'Altın') shardsInput.value = 45;
+      else if (tier === 'Elmas') shardsInput.value = 60;
+    }
+
+    function fetchArtistPhoto() {
+      const name = document.getElementById('b-artist').value.trim();
+      if (!name) return alert('Lütfen önce bir sanatçı adı yazın!');
+
+      fetch('/api/admin/artist-image?name=' + encodeURIComponent(name), { headers: { 'Authorization': token } })
+        .then(r => r.json())
+        .then(d => {
+          if (d.imageUrl) {
+            document.getElementById('b-image').value = d.imageUrl;
+            document.getElementById('b-preview-img').src = d.imageUrl;
+            document.getElementById('b-preview-name').innerText = name;
+          } else {
+            alert('Deezer üzerinde bu sanatçının fotoğrafı bulunamadı, doğrudan link girebilirsiniz.');
+          }
+        });
+    }
+
+    document.getElementById('b-image').addEventListener('input', (e) => {
+      document.getElementById('b-preview-img').src = e.target.value;
+    });
+
+    function saveBadge(e) {
+      e.preventDefault();
+      const id = document.getElementById('b-id').value || ('badge_' + Date.now());
+      const artist_name = document.getElementById('b-artist').value.trim();
+      const category_id = document.getElementById('b-category').value;
+      const title = document.getElementById('b-title').value.trim();
+      const tier = document.getElementById('b-tier').value;
+      const total_shards = parseInt(document.getElementById('b-shards').value) || 45;
+      const image_url = document.getElementById('b-image').value.trim();
+
+      fetch('/api/admin/badges/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ id, category_id, artist_name, title, tier, total_shards, image_url })
+      })
+      .then(r => r.json())
+      .then(d => {
+        closeBadgeModal();
+        loadAllData();
+      });
+    }
+
+    function editBadge(badge) {
+      document.getElementById('b-id').value = badge.id;
+      document.getElementById('b-artist').value = badge.artist_name;
+      document.getElementById('b-category').value = badge.category_id;
+      document.getElementById('b-title').value = badge.title;
+      document.getElementById('b-tier').value = badge.tier;
+      document.getElementById('b-shards').value = badge.total_shards;
+      document.getElementById('b-image').value = badge.image_url;
+      document.getElementById('b-preview-img').src = badge.image_url;
+      document.getElementById('b-preview-name').innerText = badge.artist_name;
+      document.getElementById('modal-badge-title').innerText = '✏️ Plak Düzenle';
+      document.getElementById('badge-modal').style.display = 'flex';
+    }
+
+    function deleteBadge(id) {
+      if (!confirm('Bu plağı silmek istediğinizden emin misiniz?')) return;
+      fetch('/api/admin/badges/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ id })
+      })
+      .then(r => r.json())
+      .then(() => loadAllData());
+    }
+
+    /* ===== MAĞAZA YÖNETİMİ FONKSİYONLARI ===== */
+    function loadStoreItems() {
+      fetch('/api/admin/store/items', { headers: { 'Authorization': token } })
+        .then(r => r.json())
+        .then(items => {
+          document.getElementById('stat-store').innerText = items.length;
+          renderStoreItems(items);
+        });
+    }
+
+    function renderStoreItems(items) {
+      const container = document.getElementById('store-list');
+      if (!items || items.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Kayıtlı mağaza paketi bulunamadı.</div>';
+        return;
+      }
+      container.innerHTML = items.map(item => {
+        let rewards = {};
+        try { rewards = typeof item.rewards_json === 'string' ? JSON.parse(item.rewards_json) : (item.rewards_json || {}); } catch(_) {}
+        const isGame = item.type === 'in_game';
+        const typeBadge = isGame 
+          ? '<span class="badge-pill" style="background:rgba(245,158,11,0.15); color:var(--amber);">Oyun İçi (Altın)</span>' 
+          : '<span class="badge-pill" style="background:rgba(16,185,129,0.15); color:var(--emerald);">Google Play (IAP)</span>';
+        const statusBadge = item.is_active 
+          ? '<span style="color:var(--emerald); font-weight:700; font-size:11px;">🟢 Aktif</span>' 
+          : '<span style="color:var(--crimson); font-weight:700; font-size:11px;">🔴 Pasif</span>';
+        
+        let rewardText = [];
+        if (rewards.coins) rewardText.push(`🪙 +${rewards.coins} Altın`);
+        if (rewards.energy) rewardText.push(rewards.energy >= 999 ? '⚡ Sınırsız Enerji' : `⚡ +${rewards.energy} Enerji`);
+        if (rewards.jokers) rewardText.push(`🎯 +${rewards.jokers} Joker`);
+        if (rewards.remove_ads) rewardText.push('🛡️ Reklamsız');
+        if (rewards.is_vip) rewardText.push('👑 VIP Rozet');
+
+        return `
+          <div class="card" style="opacity:${item.is_active ? '1' : '0.6'};">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:28px;">${item.icon || '🛍️'}</span>
+                <div>
+                  <div style="font-weight:800; font-size:15px; color:#fff;">${item.title}</div>
+                  <div style="font-size:11px; color:var(--text-muted);">${item.id}</div>
+                </div>
+              </div>
+              ${statusBadge}
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px; min-height:34px;">${item.subtitle || ''}</div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-light); padding:8px 12px; border-radius:10px; margin-bottom:10px;">
+              <div style="font-weight:800; font-size:14px; color:var(--amber);">${item.price_label}</div>
+              <div>${typeBadge}</div>
+            </div>
+
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
+              <b>🎁 Ödül:</b> ${rewardText.length > 0 ? rewardText.join(', ') : 'Özel'}
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+              <span class="badge-pill" style="font-size:10px;">Sıra: #${item.display_order || 0}</span>
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-secondary btn-sm" onclick='editStoreItem(${JSON.stringify(item)})'>Düzenle</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteStoreItem('${item.id}')">Sil</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function onStoreTypeChange() {
+      // type değiştiğinde yardımcı ipuçları
+    }
+
+    function openStoreModal() {
+      document.getElementById('s-id').value = '';
+      document.getElementById('s-id').readOnly = false;
+      document.getElementById('s-type').value = 'in_app';
+      document.getElementById('s-icon').value = '🛍️';
+      document.getElementById('s-title').value = '';
+      document.getElementById('s-subtitle').value = '';
+      document.getElementById('s-price-label').value = '₺49,99';
+      document.getElementById('s-coins-cost').value = '0';
+      document.getElementById('s-badge-label').value = '';
+      document.getElementById('s-badge-color').value = '#F59E0B';
+      document.getElementById('s-rew-coins').value = '0';
+      document.getElementById('s-rew-energy').value = '0';
+      document.getElementById('s-rew-jokers').value = '0';
+      document.getElementById('s-rew-noads').checked = false;
+      document.getElementById('s-rew-vip').checked = false;
+      document.getElementById('s-order').value = '1';
+      document.getElementById('s-active').checked = true;
+      document.getElementById('modal-store-title').innerText = '➕ Yeni Mağaza Paketi Ekle';
+      document.getElementById('store-modal').style.display = 'flex';
+    }
+
+    function closeStoreModal() {
+      document.getElementById('store-modal').style.display = 'none';
+    }
+
+    function editStoreItem(item) {
+      document.getElementById('s-id').value = item.id;
+      document.getElementById('s-id').readOnly = true; // ID değiştirilemez
+      document.getElementById('s-type').value = item.type || 'in_app';
+      document.getElementById('s-icon').value = item.icon || '🛍️';
+      document.getElementById('s-title').value = item.title;
+      document.getElementById('s-subtitle').value = item.subtitle || '';
+      document.getElementById('s-price-label').value = item.price_label || '';
+      document.getElementById('s-coins-cost').value = item.coins_cost || 0;
+      document.getElementById('s-badge-label').value = item.badge_label || '';
+      document.getElementById('s-badge-color').value = item.badge_color || '#F59E0B';
+      document.getElementById('s-order').value = item.display_order || 1;
+      document.getElementById('s-active').checked = item.is_active !== 0;
+
+      let rew = {};
+      try { rew = typeof item.rewards_json === 'string' ? JSON.parse(item.rewards_json) : (item.rewards_json || {}); } catch(_) {}
+      document.getElementById('s-rew-coins').value = rew.coins || 0;
+      document.getElementById('s-rew-energy').value = rew.energy || 0;
+      document.getElementById('s-rew-jokers').value = rew.jokers || 0;
+      document.getElementById('s-rew-noads').checked = !!rew.remove_ads;
+      document.getElementById('s-rew-vip').checked = !!rew.is_vip;
+
+      document.getElementById('modal-store-title').innerText = '✏️ Mağaza Paketini Düzenle';
+      document.getElementById('store-modal').style.display = 'flex';
+    }
+
+    function saveStoreItem(e) {
+      e.preventDefault();
+      const id = document.getElementById('s-id').value.trim();
+      const type = document.getElementById('s-type').value;
+      const icon = document.getElementById('s-icon').value.trim() || '🛍️';
+      const title = document.getElementById('s-title').value.trim();
+      const subtitle = document.getElementById('s-subtitle').value.trim();
+      const price_label = document.getElementById('s-price-label').value.trim();
+      const coins_cost = parseInt(document.getElementById('s-coins-cost').value) || 0;
+      const badge_label = document.getElementById('s-badge-label').value.trim();
+      const badge_color = document.getElementById('s-badge-color').value.trim() || '#F59E0B';
+      const display_order = parseInt(document.getElementById('s-order').value) || 1;
+      const is_active = document.getElementById('s-active').checked ? 1 : 0;
+
+      const rewards = {
+        coins: parseInt(document.getElementById('s-rew-coins').value) || 0,
+        energy: parseInt(document.getElementById('s-rew-energy').value) || 0,
+        jokers: parseInt(document.getElementById('s-rew-jokers').value) || 0,
+        remove_ads: document.getElementById('s-rew-noads').checked,
+        is_vip: document.getElementById('s-rew-vip').checked,
+      };
+
+      fetch('/api/admin/store/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({
+          id, type, icon, title, subtitle, price_label, coins_cost,
+          badge_label, badge_color, display_order, is_active,
+          rewards_json: JSON.stringify(rewards)
+        })
+      })
+      .then(r => r.json())
+      .then(() => {
+        closeStoreModal();
+        loadAllData();
+      });
+    }
+
+    function deleteStoreItem(id) {
+      if (!confirm('Bu mağaza paketini silmek istediğinizden emin misiniz?')) return;
+      fetch('/api/admin/store/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ id })
+      })
+      .then(r => r.json())
+      .then(() => loadAllData());
+    }
+  </script>
+</body>
+</html>

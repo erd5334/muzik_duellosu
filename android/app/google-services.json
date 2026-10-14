@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "934487069688",
+    "project_id": "muzik-duellosu",
+    "storage_bucket": "muzik-duellosu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934487069688:android:27ec524890340601133c0d",
+        "android_client_info": {
+          "package_name": "com.eryazilimci.muzik_duellosu"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "934487069688-3j15kitfrm5e4f7923dfboda2o9r87bh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eryazilimci.muzik_duellosu",
+            "certificate_hash": "a1813afea6d1d9d9f7577d591a18b11d7918982d"
+          }
+        },
+        {
+          "client_id": "934487069688-8iiub0htcjnhc32dooqlg5i2glck16q2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCGw1QC2JhNvs2LKSktMoGYk0oqctdORY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "934487069688-8iiub0htcjnhc32dooqlg5i2glck16q2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
