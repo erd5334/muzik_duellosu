@@ -46,9 +46,11 @@ jobs:
 
       - name: API anahtarını yerleştir
         run: |
+          mkdir -p ~/.appstoreconnect/private_keys
           mkdir -p "$RUNNER_TEMP/keys"
-          echo "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" > "$RUNNER_TEMP/keys/AuthKey.p8"
-          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey.p8" >> "$GITHUB_ENV"
+          printf "%s\n" "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" > "$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8"
+          cp "$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8" ~/.appstoreconnect/private_keys/
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8" >> "$GITHUB_ENV"
 
       - name: Paketleri indir
         run: flutter pub get
