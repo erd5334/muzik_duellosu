@@ -48,9 +48,20 @@ jobs:
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
           mkdir -p "$RUNNER_TEMP/keys"
-          printf "%s\n" "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" > "$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8"
-          cp "$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8" ~/.appstoreconnect/private_keys/
-          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8" >> "$GITHUB_ENV"
+          KEY_FILE="$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8"
+          # Base64 olarak gelmişse çöz, düz metinse doğrudan yaz
+          if echo "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" | grep -q "BEGIN PRIVATE KEY"; then
+            echo "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" > "$KEY_FILE"
+          else
+            echo "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" | base64 --decode > "$KEY_FILE"
+          fi
+          # Dosya izinlerini ve kopyasını ayarla
+          chmod 600 "$KEY_FILE"
+          cp "$KEY_FILE" ~/.appstoreconnect/private_keys/
+          echo "ASC_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
+          # Anahtar formatını doğrula
+          head -n 1 "$KEY_FILE"
+          tail -n 1 "$KEY_FILE"
 
       - name: Paketleri indir
         run: flutter pub get
