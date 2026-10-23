@@ -41,7 +41,8 @@ dependencies:
   shared_preferences: ^2.5.6
   flutter_animate: ^4.5.2
   web_socket_channel: ^3.0.3
-  google_mobile_ads: ^9.1.0
+  google_mobile_ads: ^5.2.0
+  webview_flutter: ^4.10.0
   google_sign_in: 6.2.2
   in_app_purchase: ^3.3.1
   url_launcher: ^6.3.1
@@ -62,6 +63,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  config:
+    enable-swift-package-manager: false
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -98,3 +101,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+dependency_overrides:
+  in_app_purchase_storekit: 0.4.0
+
+
+
