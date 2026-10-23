@@ -45,21 +45,18 @@ jobs:
           pod --version
 
       - name: API anahtarını yerleştir
+        env:
+          KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
           mkdir -p "$RUNNER_TEMP/keys"
           KEY_FILE="$RUNNER_TEMP/keys/AuthKey_${{ env.ASC_KEY_ID }}.p8"
-          # Base64 olarak gelmişse çöz, düz metinse doğrudan yaz
-          if echo "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" | grep -q "BEGIN PRIVATE KEY"; then
-            echo "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" > "$KEY_FILE"
-          else
-            echo "${{ secrets.APP_STORE_CONNECT_KEY_P8 }}" | base64 --decode > "$KEY_FILE"
-          fi
-          # Dosya izinlerini ve kopyasını ayarla
+          printf "%s\n" "$KEY_CONTENT" > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
           cp "$KEY_FILE" ~/.appstoreconnect/private_keys/
           echo "ASC_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
-          # Anahtar formatını doğrula
+          echo "Anahtar dosya boyutu:"
+          wc -c "$KEY_FILE"
           head -n 1 "$KEY_FILE"
           tail -n 1 "$KEY_FILE"
 
