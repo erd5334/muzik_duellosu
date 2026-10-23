@@ -112,6 +112,32 @@ flowchart TD
 
 ---
 
+### FAZ 5: GAME FEEL, JUICE & OYUN PSİKOLOJİSİ (Gamedev-Skills Reposu Kancaları)
+
+Oyun geliştirme ajan reposundan (`awesome-gamedev-agent-skills`) ilham alarak oyuna eklenecek "tatmin ve bağımlılık" mekanikleri:
+
+#### 1. ⚡ Hissiyat & Tatmin (Juice - Dopamin Patlaması)
+- **Haptic Feedback (Dokunsal Titreşim):** 
+  - Doğru cevap tıklandığında iOS & Android motorundan gelen hafif, tok ve tatmin edici dokunuş hissi.
+  - Yanlış cevapta çift uyarıcı hafif titreşim.
+  - Maç kazanıldığında görkemli zafer titreşimi.
+- **Micro-Particle & Işık Efektleri:** 
+  - Doğru basılan şıkkın etrafından altın/yeşil konfeti veya yıldız parçacıklarının patlaması.
+- **Tansiyon & Gerilim Mekaniği:** 
+  - Sürenin son 3 saniyesine girildiğinde sayaç dairesinin kırmızıya dönüp kalp atışı gibi nabız (pulse) atması ve ritmik sayaç uyarısı.
+- **🔥 Alevli Combo Çarpanı:** 
+  - 2, 3 ve 5 seri doğru bilindiğinde puan çarpanının (x1.5, x2) ekranda alevli görsel efektle büyümesi.
+
+#### 2. 🧠 Oyun Psikolojisi & Retention (Oyuncuyu Bağlama)
+- **"Çok Yakındın!" (Near Miss) Psikolojisi:** 
+  - 1-2 puan farkla kaybedilen maçlarda oyuncuyu küstürmek yerine hırslandıran *"Çok yaklaştın! Rövanş maçı başlat"* dinamik butonu.
+- **Teselli Ödülü:** 
+  - Mağlup olan oyuncunun tamamen sıfır çekip oyundan soğumasını önlemek için küçük bir teselli XP'si / 10 altın verilmesi.
+- **FTUE (İlk Kullanıcı Deneyimi):** 
+  - Oyunu ilk kez kuran oyuncunun ilk maçında hızlı doğru bilip kazanma hazzını tatması (onboarding akışı).
+
+---
+
 ## 📢 BÖLÜM 3: REKLAM, TANITIM & VİRAL BÜYÜME STRATEJİSİ
 
 ```mermaid
@@ -246,6 +272,7 @@ flowchart TD
 | 🟡 P1 | %100 Admin Yönetimli Sezon Bileti & Sonsuz Sandık | LiveOps | **Sıradaki Adım** |
 | 🟡 P1 | Günlük, Haftalık ve Sezonluk Görev Sistemi | Canlı Operasyon | **Sıradaki Adım** |
 | 🟡 P1 | Hükmen Galibiyet & Terk Edeni Cezalandırma | Anti-Cheat | **Sıradaki Adım** |
+| 🟡 P1 | Game Feel, Haptic & Juice (Titreşim, Parçacık, Nabız) | UX / Hissiyat | **Planlandı (Faz 5)** |
 | 🔵 P2 | Günün Şarkısı (Wordle / Heardle Viral Modu) | Büyüme / Viral | Planlandı |
 | 🔵 P2 | TikTok & Instagram Reels İçerik Yayını | Pazarlama | Başlatılacak |
 | 🟣 P3 | Haftalık Ligler (Bronz'dan Şampiyonlar Ligi'ne) | Rekabet | Planlandı |
