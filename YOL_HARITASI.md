@@ -1,6 +1,6 @@
 # 🗺️ MÜZİK DÜELLOSU / SAHNE SENİN: BÜYÜK YOL HARİTASI (ROADMAP)
 
-Bu belge; uygulamanın ürün geliştirme, canlı operasyon (LiveOps), oyun mekanikleri, hile koruması ve sosyal medya reklam stratejilerini tek bir çatı altında toplayan ana rehberdir.
+Bu belge; uygulamanın ürün geliştirme, canlı operasyon (LiveOps), oyun mekanikleri, hile koruması, Apple App Store yayın süreci ve sosyal medya reklam stratejilerini tek bir çatı altında toplayan ana rehberdir.
 
 ---
 
@@ -12,20 +12,25 @@ Bu belge; uygulamanın ürün geliştirme, canlı operasyon (LiveOps), oyun meka
   - **Sanatçı Ustaları:** Düellolarda doğru bilinen her sanatçı için `+1` puanlama ve altın/gümüş/bronz madalyalı sıralama tablosu.
   - **En İyi Seri (🔥 Streak):** Kesintisiz galibiyet serisi takibi.
   - **Bulut Senkronizasyonu:** VPS SQLite veritabanına `stats_json` ve `last_energy_timestamp` entegrasyonu, Google hesabı ile cihazlar arası kayıpsız birleştirme (`mergeStats`).
+- [x] **Apple iOS TestFlight Altyapısı (23 Ekim 2026):**
+  - Apple Developer hesabı ve App Store Connect kaydı (`com.eryazilimci.muzikDuellosu`).
+  - GitHub Actions bulut Mac (`macos-26`) otomatik derleme ve dağıtım CI/CD altyapısı.
+  - Fiziksel iPhone üzerinde TestFlight ile canlı kurulum ve test.
+  - iOS ses akış mimarisi düzeltmesi (Apple `AVPlayer` yerel CDN akışı ve ana hoparlöre ses yönlendirmesi).
 
 ---
 
 ## 🚀 BÖLÜM 2: OYUN GELİŞTİRME & LIVEOPS (CANLI OPERASYON) YOL HARİTASI
 
-> **Altın Kural:** Mobil uygulama sadece sahnedir; tüm ödüller, sezonlar, süreler ve oranlar **Admin Panelinden dinamik olarak yönetilmeli**, Google Play'e sık sık güncelleme atılmamalıdır.
+> **Altın Kural:** Mobil uygulama sadece sahnedir; tüm ödüller, sezonlar, süreler ve oranlar **Admin Panelinden dinamik olarak yönetilmeli**, Google Play'e veya App Store'a sık sık güncelleme atılmamalıdır.
 
 ```mermaid
 flowchart TD
-    AdminPanel["🎛️ Web Admin Paneli (LiveOps CMS)"] -->|JSON API /api/season/active| AppClient["📱 Mobil Uygulama (Flutter)"]
+    AdminPanel["🎛️ Web Admin Paneli (LiveOps CMS)"] -->|JSON API /api/season/active| AppClient["📱 Mobil Uygulama (Flutter - iOS & Android)"]
     AdminPanel -->|Görev Tanımları & XP Kriterleri| ServerDB[("🗄️ VPS SQLite Veritabanı")]
     AppClient -->|Canlı Düello / WebSocket| ServerEngine["⚙️ Server-Authoritative Oyun Motoru"]
     ServerEngine -->|Hile Korumalı XP & Sonuç| ServerDB
-    ServerDB -->|Kalıcı Google ID İlerlemesi| AppClient
+    ServerDB -->|Kalıcı Hesap İlerlemesi| AppClient
 ```
 
 ---
@@ -112,7 +117,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     Shorts["📱 TikTok / Reels / Shorts<br/>(3 Saniye Şarkı Tahmin Kancası)"] --> Traffic["👥 Yeni Organik Oyuncu Trafiği"]
-    Traffic --> App["🎮 Müzik Düellosu (Android & Web)"]
+    Traffic --> App["🎮 Sahne Senin (iOS & Android)"]
     App --> WordleShare["📲 Günün Şarkısı Paylaşımı<br/>(Instagram Story / WhatsApp)"]
     WordleShare --> Shorts
     App --> FriendDuel["🤝 Arkadaş Düellosu Daveti"]
@@ -122,7 +127,7 @@ flowchart LR
 ---
 
 ### 1. 🏢 Hesap Stratejisi: Kişisel Hesap mı, Özel Hesap mı?
-- **Ana Karar:** Uygulama için müstakil bir **@muzikduellosu** (veya benzeri) resmi marka hesabı açılmalıdır.
+- **Ana Karar:** Uygulama için müstakil bir **@muzikduellosu** (veya @sahnesenin) resmi marka hesabı açılmalıdır.
 - **Kişisel Hesap / eryazilimci.com Rolü:** Kişisel hesap ve web sitesi **"Geliştirici & Güven Damgası"** olarak kullanılmalı; profilde *"Bir ER Yazılım projesidir - eryazilimci.com"* ibaresi yer almalıdır. Bu, hem kurumsal güven sağlar hem de diğer yazılım projelerine trafik taşır.
 
 ---
@@ -138,7 +143,7 @@ flowchart LR
 #### Format B: İkili Kapışma / Arkadaş Düellosu
 - İki kişinin telefonu ellerine alıp yan yana yarışırken çekilmiş 15 saniyelik doğal reaksiyon videosu.
 - Biri son saniyede doğru basıp havalara uçar, diğeri masaya vurur.
-- Başlık: *"Arkadaş ortamında arkadaşlığı bitiren o an 😂 Müzik Düellosu yayında!"*
+- Başlık: *"Arkadaş ortamında arkadaşlığı bitiren o an 😂 Sahne Senin yayında!"*
 
 #### Format C: Nesiller Kapışması (Nostalji Kancası)
 - *"Annem vs Ben: Yeşilçam şarkılarını kim daha hızlı bilecek?"* veya *"2000'ler Pop düellosunda kim kimi yener?"*
@@ -146,27 +151,98 @@ flowchart LR
 ---
 
 ### 3. 🎯 Takipçi Kasma & Oyuncu Kazanma Taktikleri
-1. **Bio Linki:** Profil bio'sunda doğrudan Google Play indirme linki (linktree veya doğrudan Play linki).
+1. **Bio Linki:** Profil bio'sunda doğrudan mağaza indirme linki (linktree üzerinden tek linkle App Store & Google Play).
 2. **Haftalık Skor Meydan Okuması:** *"Bu hafta 90'lar Pop'ta 10 galibiyet serisi yapıp ekran görüntüsünü DM atan ilk 3 kişiye 1000 Altın + VIP hediye!"*
 3. **Müzik Mizahı / Meme İçerikleri:** Türk müziği, nostaljik klipler ve şarkı sözleri üzerine eğlenceli caps ve paylaşımlar.
 4. **Mikro-Influencer İşbirlikleri:** 10 bin - 50 bin takipçili müzik/nostalji sayfalarıyla küçük bütçeli story paylaşımları.
 
 ---
 
-### 4. 🍏 iOS (Apple) Yol Haritası
-- **Mevcut Durum:** Flutter altyapımız iOS ile %100 uyumludur; Android'de stabilite sağlandıktan sonra iOS'a kolayca geçilebilir.
-- **Gereksinimler:**
-  - Yıllık $99 Apple Developer hesabı (resmi standart ücrettir).
-  - Xcode derlemesi için Mac ortamı (Mevcut Mac yoksa: **MacinCloud** gibi aylık bulut Mac servisleri veya GitHub Actions CI/CD otomatik derleme ile sıfır donanım maliyetiyle aşılabilir).
-- **Zamanlama:** Android'de ilk 1.000 - 5.000 aktif kullanıcıya ulaşıp oyun döngüsünden emin olunduğunda iOS lansmanı yapılacaktır.
+## 🍏 BÖLÜM 4: APPLE APP STORE (iOS) YAYINA ÇIKIŞ VE TİCARİLEŞME YOL HARİTASI
+
+TestFlight üzerinde fiziksel iPhone testi başarıyla tamamlanmıştır. Uygulamanın doğrudan App Store genel kullanıcılarına açılması ve gelir üretmesi için gereken tüm adımlar aşağıdadır:
+
+```mermaid
+flowchart TD
+    TF["📱 TestFlight Onayı (Tamamlandı ✅)"] --> Prep["📋 App Store İnceleme & Gelir Hazırlığı"]
+    Prep --> AppleLogin["🔑 1. Apple ile Giriş (Guideline 4.8)"]
+    Prep --> IAP["💎 2. Uygulama İçi Satın Almalar (IAP)"]
+    Prep --> BankTax["🏦 3. Banka Hesabı & Vergi (%15 Komisyon)"]
+    Prep --> AdMob["📢 4. AdMob iOS & ATT İzinleri"]
+    Prep --> StorePage["🖼️ 5. Mağaza Ekran Görüntüleri & Metinler"]
+    AppleLogin --> Review["🚀 İncelemeye Gönder (Submit for Review)"]
+    IAP --> Review
+    BankTax --> Review
+    AdMob --> Review
+    StorePage --> Review
+    Review --> StoreLive["🎉 App Store Canlı Yayın (24-48 Saat)"]
+```
+
+---
+
+### 1. 🔑 Apple ile Giriş (Sign in with Apple) Kuralı
+- **Apple İnceleme Yönergesi (Guideline 4.8):** Uygulamada Google gibi 3. taraf sosyal giriş seçeneği bulunduğu için, Apple iOS kullanıcılarına eşdeğer olarak "Apple ile Giriş" seçeneğinin sunulmasını zorunlu tutar.
+- **İki Uygulama Seçeneği:**
+  - **Seçenek A (Önerilen & Uzun Vadeli):** `sign_in_with_apple` paketi eklenir. iPhone kullanıcıları FaceID / TouchID ile tek tıkla şifresiz giriş yapar. Apple ID sunucudaki SQLite veritabanı ile senkronize edilir.
+  - **Seçenek B (Hızlı Onay Yolu):** İlk sürümde iOS üzerinde sosyal hesap bağlama butonu gizlenerek yalnızca "Misafir Oyuncu" moduyla başlatılır; bu durumda Apple ile Giriş zorunluluğu doğmaz ve ilk onay bürokrasisiz alınır.
+
+---
+
+### 2. 💎 Uygulama İçi Satın Almalar (In-App Purchases)
+- **Teknik Durum:** Kod tarafı (`lib/services/purchase_service.dart`) hem Android Google Play Billing hem de iOS StoreKit ile çift yönlü %100 uyumludur.
+- **App Store Connect Tanımları:** App Store Connect > *Monetization > In-App Purchases* ekranında aşağıdaki ürünler açılacaktır:
+  - **Tüketilebilir Ürünler (Consumables):**
+    - Enerji Paketleri: `energy_10`, `energy_25`, `energy_60`, `energy_150`, `energy_300`
+    - Altın/Elmas Paketleri: `coins_500`, `coins_1500`, `coins_4000`, `coins_10000`
+  - **Tüketilemez Ürünler (Non-Consumable):**
+    - Reklam Kaldırma: `remove_ads` (Apple kuralı gereği ayarlarda "Satın Alımları Geri Yükle / Restore Purchases" butonu aktif edilmiştir).
+  - **Abonelik (Auto-Renewable Subscription):**
+    - VIP Üyelik: `vip_club`
+
+---
+
+### 3. 🏦 Banka Hesabı, Vergi Anlaşması & Komisyon İndirimi
+- **Banka Tanımlama (IBAN):** App Store Connect > *Agreements, Tax, and Banking* bölümünden Türk bankası IBAN ve SWIFT kodu tanımlanır. Apple kazançları her ay doğrudan Türk banka hesabınıza havale eder.
+- **W-8BEN ABD Vergi Formu:** Türkiye ile ABD arasındaki çifte vergilendirmeyi önleme anlaşması gereği form online doldurulur (gelir vergisi stopajı %0 veya minimuma iner).
+- **Apple Küçük İşletme Programı (Small Business Program):** Yıllık geliri 1 milyon doların altındaki geliştiriciler için Apple standart %30 komisyonunu **%15'e indirmektedir**. Başvuru tek tıkla yapılarak net gelir %15 artırılacaktır.
+
+---
+
+### 4. 📢 AdMob (iOS Reklamları & Gelir)
+- **AdMob iOS Kimliği:** Google AdMob konsolunda iOS için "Sahne Senin" uygulaması açılıp gerçek reklam birim ID'leri (Banner, Geçiş, Ödüllü) bağlanacaktır.
+- **App Tracking Transparency (ATT):** iOS 14+ zorunluluğu gereği `NSUserTrackingUsageDescription` izni eklenecek; kullanıcıdan izin alınarak reklam BGBM (gelir) oranları maksimize edilecektir.
+- **SKAdNetworkItems:** Apple reklam ilişkilendirme listesi `Info.plist` içine eksiksiz eklenecektir.
+
+---
+
+### 5. 👥 Çok Oyunculu Sunucu (iOS & Android Ortak Havuz)
+- iOS kullanıcıları ile Android kullanıcıları VPS üzerindeki `server/bin/server.dart` WebSocket sunucusunda aynı canlı odalarda düello yapabilir.
+- Platformlar arası (Cross-Platform) arkadaşlık davet kodları iki işletim sisteminde de ortak çalışacaktır.
+
+---
+
+### 6. 🖼️ Mağaza Sayfası ve İncelemeye Gönderme (App Store Review)
+- **Ekran Görüntüleri:** TestFlight yüklü iPhone'dan alınacak 3-5 adet kaliteli ekran görüntüsü (Arena, Düello, Sanatçı Seçimi, Şarkı Çalma).
+- **Mağaza Bilgileri:**
+  - **Uygulama Adı:** Sahne Senin: Şarkıyı Bil
+  - **Alt Başlık:** Müzik Düellosu & Şarkı Yarışması
+  - **Kategori:** Oyunlar / Trivia (Bilgi) & Müzik
+  - **Yaş Sınırı:** 4+ (veya 9+)
+  - **Gizlilik Politikası URL'si:** Barındırılan privacy policy linki.
+- **İnceleme ve Canlı Yayın:** "Submit for Review" butonuna basıldıktan sonra Apple App Review ekibi **24 ila 48 saat** içinde incelemeyi tamamlar ve uygulama tüm dünyada App Store'da indirilebilir hale gelir.
 
 ---
 
 ## 📋 ÖZET YOL HARİTASI TABLOSU
 
 | Öncelik | Özellik / Strateji | Tip | Durum |
-| :---: | :--- | :--- | :---: |
+| :---: | :--- | :--- | :--- :--- |
 | 🟢 P0 | Çevrimdışı Enerji Düzeltmesi & İstatistik Paneli | Oyun İçi | **Tamamlandı (v1.0.7)** |
+| 🟢 P0 | Apple Developer, Mac CI/CD & TestFlight Kurulumu | Altyapı | **Tamamlandı ✅ (23 Ekim 2026)** |
+| 🟢 P0 | iOS Ses Oynatma & Hoparlör Akış Düzeltmesi | iOS Çekirdek | **Tamamlandı ✅ (Build 5)** |
+| 🟡 P1 | Apple ile Giriş (Sign in with Apple) Entegrasyonu | iOS / Hesap | **Sıradaki Adım (Guideline 4.8)** |
+| 🟡 P1 | App Store Connect IAP Paketleri & Fiyat Tanımları | Monetization | **Sıradaki Adım** |
+| 🟡 P1 | Agreements, Tax (W-8BEN) & %15 Küçük İşletme İndirimi | Finans / Banka | **Sıradaki Adım** |
 | 🟡 P1 | %100 Admin Yönetimli Sezon Bileti & Sonsuz Sandık | LiveOps | **Sıradaki Adım** |
 | 🟡 P1 | Günlük, Haftalık ve Sezonluk Görev Sistemi | Canlı Operasyon | **Sıradaki Adım** |
 | 🟡 P1 | Hükmen Galibiyet & Terk Edeni Cezalandırma | Anti-Cheat | **Sıradaki Adım** |
@@ -174,7 +250,7 @@ flowchart LR
 | 🔵 P2 | TikTok & Instagram Reels İçerik Yayını | Pazarlama | Başlatılacak |
 | 🟣 P3 | Haftalık Ligler (Bronz'dan Şampiyonlar Ligi'ne) | Rekabet | Planlandı |
 | 🟣 P3 | 3-8 Kişilik Çok Oyunculu Parti Modu | Sosyal | Planlandı |
-| ⚪ P4 | Apple App Store (iOS) Yayını | Platform | Planlandı |
+| 🚀 P0 | App Store Nihai Gönderim (Submit for Review) | Mağaza | TestFlight Sonrası |
 
 ---
-*Son Güncelleme: 14 Ekim 2026 • Sahne Senin / Müzik Düellosu Ekibi*
+*Son Güncelleme: 23 Ekim 2026 • Sahne Senin / Müzik Düellosu Ekibi*
