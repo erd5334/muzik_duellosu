@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
 import 'providers/game_provider.dart';
 import 'theme/app_theme.dart';
@@ -12,6 +13,21 @@ import 'services/ad_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // iOS ve Android için ses yönlendirmesi:
+  // - Sessiz anahtarı açık olsa bile müzik çalar (respectSilence: false)
+  // - Sesi ahizeye değil ana hoparlöre yönlendirir (speaker)
+  try {
+    await AudioPlayer.global.setAudioContext(
+      AudioContextConfig(
+        respectSilence: false,
+        route: AudioContextConfigRoute.speaker,
+      ).build(),
+    );
+  } catch (e) {
+    debugPrint('Audio context configuration error: $e');
+  }
+
   await AdService.instance.init();
   // Koyu durum çubuğu ve gezinme çubuğu
   SystemChrome.setSystemUIOverlayStyle(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -166,6 +167,10 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> preloadSong(String url) async {
     if (url.isEmpty || _audioCache.containsKey(url) || _pendingAudioFetches.contains(url)) return;
+    if (!kIsWeb && Platform.isIOS) {
+      // iOS'ta audioplayers paketi setSourceBytes desteklemez; doğrudan AVPlayer CDN akışı kullanılır.
+      return;
+    }
     _pendingAudioFetches.add(url);
     try {
       final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
@@ -985,10 +990,23 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     _initEnergyTimer();
     _initApp();
     PurchaseService.instance.init(this);
+    _initAudioPlayer();
     _audioPlayer.onPlayerStateChanged.listen((state) {
       _isAudioPlaying = state == PlayerState.playing;
       notifyListeners();
     });
+  }
+
+  void _initAudioPlayer() {
+    try {
+      final audioContext = AudioContextConfig(
+        respectSilence: false,
+        route: AudioContextConfigRoute.speaker,
+      ).build();
+      _audioPlayer.setAudioContext(audioContext);
+    } catch (e) {
+      debugPrint('Audio context config error: $e');
+    }
   }
 
   Future<void> _initApp() async {
@@ -1324,7 +1342,12 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       await _audioPlayer.stop();
       final url = question.song.previewUrl;
       if (url.isNotEmpty) {
-        if (_audioCache.containsKey(url)) {
+        if (!kIsWeb && Platform.isIOS) {
+          // iOS'ta audioplayers (AVPlayer) BytesSource (RAM) desteklemez.
+          // AVPlayer doğrudan Apple/Deezer CDN URL akışını yerel olarak 0 gecikmeyle çalar.
+          debugPrint('🌐 [iOS ÇALMA] Şarkı CDN üzerinden çalınıyor: $url');
+          await _audioPlayer.play(UrlSource(url));
+        } else if (_audioCache.containsKey(url)) {
           debugPrint('⚡ [RAM ÇALMA] Şarkı hafızadan 0ms gecikmeyle çalınıyor: $url');
           await _audioPlayer.play(BytesSource(_audioCache[url]!));
         } else {
