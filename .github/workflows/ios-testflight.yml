@@ -69,7 +69,7 @@ jobs:
             --build-number=${{ github.run_number }}
           cd ios && pod install --repo-update
 
-      - name: Arşivle (otomatik imzalama)
+      - name: Arşivle (kod imzalamasız)
         run: |
           xcodebuild archive \
             -workspace ios/Runner.xcworkspace \
@@ -77,12 +77,8 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
 
       - name: App Store Connect'e yükle
         run: |
