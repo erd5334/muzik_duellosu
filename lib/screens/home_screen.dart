@@ -44,200 +44,232 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // 1. Üst Başlık: Profil & Enerji & Mağaza & Koleksiyon
+            // 1. Üst Başlık: Profil, Enerji, Altın & Hızlı Menü Çipleri
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                child: Column(
                   children: [
-                    // Profil ve Seviye
-                    Expanded(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => ProfileTitlesDialog.show(context),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppTheme.surfaceLight,
-                                border: Border.all(
-                                  color: game.isVip ? Colors.amber : AppTheme.amber,
-                                  width: game.isVip ? 2.0 : 1.5,
-                                ),
-                              ),
-                              child: ClipOval(
-                                child: game.playerAvatar.startsWith('http')
-                                    ? Image.network(
-                                        game.playerAvatar,
-                                        width: 42,
-                                        height: 42,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) => const Center(
-                                          child: Text('🎧', style: TextStyle(fontSize: 20)),
-                                        ),
-                                      )
-                                    : Center(
-                                        child: Text(game.playerAvatar, style: const TextStyle(fontSize: 20)),
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                    // 1. Satır: Profil (Sol) + Enerji & Altın / Mağaza (Sağ)
+                    Row(
+                      children: [
+                        // Profil ve Seviye
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => ProfileTitlesDialog.show(context),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          game.playerName,
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w800,
-                                            color: game.isVip ? Colors.amber : AppTheme.textPrimary,
-                                            letterSpacing: -0.2,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppTheme.surfaceLight,
+                                      border: Border.all(
+                                        color: game.isVip ? Colors.amber : AppTheme.amber,
+                                        width: game.isVip ? 2.2 : 1.8,
                                       ),
-                                      if (game.isVip) ...[
-                                        const SizedBox(width: 4),
-                                        const Text('👑', style: TextStyle(fontSize: 12)),
-                                      ],
-                                      const SizedBox(width: 4),
-                                      const Icon(Icons.edit_rounded, size: 12, color: AppTheme.textMuted),
-                                    ],
+                                    ),
+                                    child: ClipOval(
+                                      child: game.playerAvatar.startsWith('http')
+                                          ? Image.network(
+                                              game.playerAvatar,
+                                              width: 44,
+                                              height: 44,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => const Center(
+                                                child: Text('🎧', style: TextStyle(fontSize: 22)),
+                                              ),
+                                            )
+                                          : Center(
+                                              child: Text(game.playerAvatar, style: const TextStyle(fontSize: 22)),
+                                            ),
+                                    ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.amber.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(
-                                            color: AppTheme.amber.withValues(alpha: 0.3),
-                                            width: 0.8,
-                                          ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                game.playerName,
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: game.isVip ? Colors.amber : AppTheme.textPrimary,
+                                                  letterSpacing: -0.2,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (game.isVip) ...[
+                                              const SizedBox(width: 4),
+                                              const Text('👑', style: TextStyle(fontSize: 12)),
+                                            ],
+                                            const SizedBox(width: 4),
+                                            const Icon(Icons.edit_rounded, size: 13, color: AppTheme.amber),
+                                          ],
                                         ),
-                                        child: Text(
-                                          '🎖️ ${game.selectedTitle}',
-                                          style: const TextStyle(
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppTheme.amber,
-                                          ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.amber.withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(
+                                                  color: AppTheme.amber.withValues(alpha: 0.3),
+                                                  width: 0.8,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                '🎖️ ${game.selectedTitle}',
+                                                style: const TextStyle(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppTheme.amber,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Flexible(
+                                              child: Text(
+                                                '• ${game.playerStats.wins} Zafer',
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        '• ${game.playerStats.wins} Zafer',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                        const SizedBox(width: 8),
 
-                    // Enerji Göstergesi (Dokununca Mağaza / Reklam açılır)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => showDialog(context: context, builder: (_) => const StoreDialog()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface,
+                        // Enerji Göstergesi
+                        InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: game.energy > 0 ? AppTheme.amber : AppTheme.crimson),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(game.energy > 0 ? '⚡' : '🪫', style: const TextStyle(fontSize: 13)),
-                            const SizedBox(width: 4),
-                            Text(
-                              game.energy >= GameProvider.maxEnergy
-                                  ? '${game.energy}/${GameProvider.maxEnergy}'
-                                  : '${game.energy}/${GameProvider.maxEnergy} (${game.minutesUntilNextEnergy}d)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: game.energy > 0 ? AppTheme.amber : AppTheme.crimson,
-                              ),
+                          onTap: () => showDialog(context: context, builder: (_) => const StoreDialog()),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: game.energy > 0 ? AppTheme.amber.withValues(alpha: 0.6) : AppTheme.crimson),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(game.energy > 0 ? '⚡' : '🪫', style: const TextStyle(fontSize: 13)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${game.energy}/${GameProvider.maxEnergy}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: game.energy > 0 ? AppTheme.amber : AppTheme.crimson,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
+                        const SizedBox(width: 6),
 
-                    // Müzik Pass Butonu
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        IconButton(
-                          icon: const Text('🎟️', style: TextStyle(fontSize: 20)),
-                          tooltip: 'Müzik Pass & Görevler',
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SeasonPassScreen()),
-                          ),
-                        ),
-                        if (game.seasonPass.unclaimedRewardCount > 0 || game.seasonPass.claimableMissionCount > 0)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppTheme.crimson,
-                                shape: BoxShape.circle,
-                              ),
+                        // Altın Göstergesi / Mağaza Kısayolu
+                        InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => showDialog(context: context, builder: (_) => const StoreDialog()),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.amber.withValues(alpha: 0.4)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('🪙', style: TextStyle(fontSize: 13)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${game.coins}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        ),
                       ],
                     ),
 
-                    // Haftalık Lig Butonu
-                    IconButton(
-                      icon: const Text('🏆', style: TextStyle(fontSize: 20)),
-                      tooltip: 'Haftalık Lig & Sıralama',
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LeagueScreen()),
+                    const SizedBox(height: 10),
+
+                    // 2. Satır: Yatay Kaydırılabilir Hızlı Eylem Çipleri
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          _buildHeaderActionChip(
+                            iconText: '🎟️',
+                            label: 'Müzik Pass',
+                            hasBadge: game.seasonPass.unclaimedRewardCount > 0 || game.seasonPass.claimableMissionCount > 0,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SeasonPassScreen()),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildHeaderActionChip(
+                            iconText: '🏆',
+                            label: 'Haftalık Lig',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const LeagueScreen()),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildHeaderActionChip(
+                            icon: const Icon(Icons.insights_rounded, color: Color(0xFF38BDF8), size: 16),
+                            label: 'Kariyer',
+                            onTap: () => showDialog(context: context, builder: (_) => const CareerStatsDialog()),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildHeaderActionChip(
+                            icon: const Icon(Icons.stars_rounded, color: AppTheme.amber, size: 16),
+                            label: 'Koleksiyon',
+                            onTap: () => showDialog(context: context, builder: (_) => const CollectionDialog()),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildHeaderActionChip(
+                            icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 16),
+                            label: 'Mağaza',
+                            onTap: () => showDialog(context: context, builder: (_) => const StoreDialog()),
+                          ),
+                        ],
                       ),
-                    ),
-
-                    // Kariyer & İstatistik Butonu
-                    IconButton(
-                      icon: const Icon(Icons.insights_rounded, color: Color(0xFF38BDF8), size: 24),
-                      tooltip: 'Kariyer & İstatistikler',
-                      onPressed: () => showDialog(context: context, builder: (_) => const CareerStatsDialog()),
-                    ),
-
-                    // Koleksiyon Butonu
-                    IconButton(
-                      icon: const Icon(Icons.stars_rounded, color: AppTheme.amber, size: 24),
-                      tooltip: 'Plak Koleksiyonu',
-                      onPressed: () => showDialog(context: context, builder: (_) => const CollectionDialog()),
-                    ),
-
-                    // Mağaza Butonu
-                    IconButton(
-                      icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
-                      tooltip: 'Müzik Mağazası',
-                      onPressed: () => showDialog(context: context, builder: (_) => const StoreDialog()),
                     ),
                   ],
                 ),
@@ -1184,6 +1216,63 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderActionChip({
+    String? iconText,
+    Widget? icon,
+    required String label,
+    required VoidCallback onTap,
+    bool hasBadge = false,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceLight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (iconText != null)
+                  Text(iconText, style: const TextStyle(fontSize: 15))
+                else
+                  ?icon,
+                if (hasBadge)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.crimson,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );
