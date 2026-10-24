@@ -87,6 +87,7 @@ class ArenaScreen extends StatelessWidget {
                           avatar: game.playerAvatar,
                           score: game.userTotalScore,
                           isLeft: true,
+                          title: game.selectedTitle,
                           statusText: userStatus,
                           statusColor: userStatusColor,
                         ),
@@ -128,6 +129,7 @@ class ArenaScreen extends StatelessWidget {
                             avatar: opponent?.avatar ?? '🎸',
                             score: game.opponentTotalScore,
                             isLeft: false,
+                            title: opponent?.title,
                             statusText: oppStatus,
                             statusColor: oppStatusColor,
                           ),
@@ -510,6 +512,7 @@ class ArenaScreen extends StatelessWidget {
     required String avatar,
     required int score,
     required bool isLeft,
+    String? title,
     String? statusText,
     Color? statusColor,
   }) {
@@ -536,9 +539,42 @@ class ArenaScreen extends StatelessWidget {
         Column(
           crossAxisAlignment: isLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end,
           children: [
-            Text(
-              name,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isLeft && title != null && title.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppTheme.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppTheme.amber),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  name,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                ),
+                if (isLeft && title != null && title.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppTheme.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppTheme.amber),
+                    ),
+                  ),
+                ],
+              ],
             ),
             Row(
               mainAxisSize: MainAxisSize.min,

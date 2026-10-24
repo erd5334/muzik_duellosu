@@ -41,12 +41,14 @@ class Opponent {
   final String city;
   final String avatar;
   final int level;
+  final String title;
 
   const Opponent({
     required this.name,
     required this.city,
     required this.avatar,
     this.level = 10,
+    this.title = 'Çaylak Dinleyici',
   });
 }
 
@@ -161,6 +163,15 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   String get playerName => _customPlayerName;
   String _customAvatar = kIsWeb ? '💻' : '📱';
   String get playerAvatar => _customAvatar;
+  String _selectedTitle = 'Çaylak Dinleyici';
+  String get selectedTitle => _selectedTitle;
+
+  void setSelectedTitle(String title) {
+    _selectedTitle = title;
+    _saveUserData();
+    notifyListeners();
+  }
+
   String? _googleUserId;
   String? get googleUserId => _googleUserId;
   String? _googleUserEmail;
@@ -379,6 +390,11 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         _customAvatar = savedAvatar;
       }
 
+      final savedTitle = prefs.getString('user_selected_title');
+      if (savedTitle != null && savedTitle.isNotEmpty) {
+        _selectedTitle = savedTitle;
+      }
+
       final badgesJson = prefs.getString('user_badges_data');
       if (badgesJson != null && badgesJson.isNotEmpty) {
         try {
@@ -589,6 +605,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       await prefs.setInt('user_jokers', powerUp5050Count);
       await prefs.setString('user_player_name', _customPlayerName);
       await prefs.setString('user_player_avatar', _customAvatar);
+      await prefs.setString('user_selected_title', _selectedTitle);
       await prefs.setString('user_player_stats', jsonEncode(_playerStats.toJson()));
       await prefs.setString('user_season_pass_data', jsonEncode(_seasonPass.toJson()));
       if (_googleUserId != null) await prefs.setString('user_google_id', _googleUserId!);
@@ -1472,6 +1489,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         'type': 'join_queue',
         'playerName': playerName,
         'avatar': playerAvatar,
+        'title': _selectedTitle,
         'platform': kIsWeb ? 'Web' : 'Android',
         'category': category.id,
       }));
@@ -1508,6 +1526,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         'type': 'create_custom_room',
         'playerName': playerName,
         'avatar': playerAvatar,
+        'title': _selectedTitle,
         'platform': kIsWeb ? 'Web' : 'Android',
         'category': category.id,
         'roundCount': roundCount,
@@ -1541,6 +1560,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         'roomCode': roomCode,
         'playerName': playerName,
         'avatar': playerAvatar,
+        'title': _selectedTitle,
         'platform': kIsWeb ? 'Web' : 'Android',
       }));
     } catch (e) {
@@ -1575,6 +1595,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         'type': 'create_party_room',
         'playerName': playerName,
         'avatar': playerAvatar,
+        'title': _selectedTitle,
         'googleId': _googleUserId,
         'category': category.id,
         'roundCount': roundCount,
@@ -1606,6 +1627,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         'roomCode': roomCode.trim(),
         'playerName': playerName,
         'avatar': playerAvatar,
+        'title': _selectedTitle,
         'googleId': _googleUserId,
       }));
     } catch (e) {
@@ -1711,6 +1733,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
             name: opp['name'] ?? 'Arkadaş',
             city: opp['platform'] ?? 'Türkiye',
             avatar: opp['avatar'] ?? '🎧',
+            title: opp['title'] ?? 'Çaylak Dinleyici',
           );
           _totalMatchRounds = data['totalRounds'] as int? ?? _totalMatchRounds;
           _status = GameStatus.opponentFound;
@@ -2108,7 +2131,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         }
       }
       tryConsumeEnergy(); // Bot rakip eşleştiğinde enerji tüketilir
-      _opponent = const Opponent(name: 'Simüle Rakip', city: 'İzmir', avatar: '🎸', level: 12);
+      _opponent = const Opponent(name: 'Simüle Rakip', city: 'İzmir', avatar: '🎸', level: 12, title: "90'lar Efsanesi");
       _status = GameStatus.opponentFound;
       notifyListeners();
 
@@ -2328,7 +2351,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> fetchLeagueData() async {
     try {
       final uri = Uri.parse(
-        'http://80.253.246.132:6060/api/league/leaderboard?userId=${_googleUserId ?? "local_user"}&trophies=$_trophies&userName=${Uri.encodeComponent(_customPlayerName)}&userAvatar=${Uri.encodeComponent(_customAvatar)}',
+        'http://80.253.246.132:6060/api/league/leaderboard?userId=${_googleUserId ?? "local_user"}&trophies=$_trophies&userName=${Uri.encodeComponent(_customPlayerName)}&userAvatar=${Uri.encodeComponent(_customAvatar)}&userTitle=${Uri.encodeComponent(_selectedTitle)}',
       );
       final response = await http.get(uri).timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {

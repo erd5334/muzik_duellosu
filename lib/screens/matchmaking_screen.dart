@@ -250,7 +250,13 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildUserCard(name: game.playerName, avatar: game.playerAvatar, tag: 'Sen', isHighlighted: false),
+                    _buildUserCard(
+                      name: game.playerName,
+                      avatar: game.playerAvatar,
+                      tag: 'Sen',
+                      title: game.selectedTitle,
+                      isHighlighted: false,
+                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Container(
@@ -273,6 +279,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
                       name: opponent?.name ?? 'Rakip',
                       avatar: opponent?.avatar ?? '🎸',
                       tag: opponent?.city ?? 'Türkiye',
+                      title: opponent?.title ?? 'Çaylak Dinleyici',
                       isHighlighted: true,
                     ),
                   ],
@@ -305,11 +312,12 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
     required String name,
     required String avatar,
     required String tag,
+    String? title,
     required bool isHighlighted,
   }) {
     return Container(
-      width: 110,
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      width: 120,
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -335,17 +343,43 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
                   )
                 : Text(avatar, style: const TextStyle(fontSize: 26)),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             name,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 2),
+          if (title != null && title.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isHighlighted ? AppTheme.amber.withValues(alpha: 0.15) : AppTheme.surfaceLight,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isHighlighted ? AppTheme.amber.withValues(alpha: 0.4) : AppTheme.border,
+                  width: 0.8,
+                ),
+              ),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: isHighlighted ? AppTheme.amber : AppTheme.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+          const SizedBox(height: 3),
           Text(
             tag,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
           ),
         ],
       ),

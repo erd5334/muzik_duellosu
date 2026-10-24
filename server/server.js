@@ -578,7 +578,7 @@ function getNextSundayDate() {
   return sunday.toISOString();
 }
 
-function generateLeagueLeaderboard(userId, userTrophies, userName, userAvatar) {
+function generateLeagueLeaderboard(userId, userTrophies, userName, userAvatar, userTitle) {
   const config = getLeagueSettings();
   const trophies = Math.max(0, parseInt(userTrophies) || 120);
   const tier = getTierForTrophies(trophies);
@@ -609,7 +609,11 @@ function generateLeagueLeaderboard(userId, userTrophies, userName, userAvatar) {
       name: BOT_NAMES[i % BOT_NAMES.length],
       avatar: BOT_AVATARS[i % BOT_AVATARS.length],
       trophies: botTrophies,
-      badgeTitle: tier === 'legends' ? 'Şampiyon' : (tier === 'diamond' ? 'Müzik Dehası' : 'Yarışmacı'),
+      badgeTitle: [
+        "90'lar Efsanesi", "Megastar Fanatiği", "Damar Üstadı", "Rock Yıldızı",
+        "Türkçe Rap Dehası", "Gülpembe Yolcusu", "Milenyum Fırtınası", "Minik Serçe Aşığı",
+        "Battle Kralı", "Rock Ozanı", "Yenilmez", "Müzik Profesörü"
+      ][i % 12],
       isCurrentUser: false
     });
   }
@@ -620,7 +624,7 @@ function generateLeagueLeaderboard(userId, userTrophies, userName, userAvatar) {
     name: userName || 'Ben',
     avatar: userAvatar || '🎧',
     trophies: trophies,
-    badgeTitle: 'Yarışmacı',
+    badgeTitle: userTitle || 'Çaylak Dinleyici',
     isCurrentUser: true
   });
 
@@ -708,7 +712,8 @@ const server = http.createServer(async (req, res) => {
     const userName = urlObj.searchParams.get('userName') || 'Ben';
     const userAvatar = urlObj.searchParams.get('userAvatar') || '🎧';
 
-    const data = generateLeagueLeaderboard(userId, trophies, userName, userAvatar);
+    const userTitle = urlObj.searchParams.get('userTitle') || 'Çaylak Dinleyici';
+    const data = generateLeagueLeaderboard(userId, trophies, userName, userAvatar, userTitle);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(data));
     return;
@@ -1417,7 +1422,7 @@ async function prepareQuestions(categoryId, count = 5) {
 
 // Gerçekçi Robot Oyuncu Profilleri (İnsan gibi oynayan botlar)
 const BOT_PROFILES = [
-  { name: 'Melis_K', avatar: '🎧' },
+  { name: 'Melis_K', avatar: '🎧', title: "90'lar Efsanesi" },
   { name: 'Ahmet92', avatar: '🔥' },
   { name: 'BarisRock', avatar: '🎸' },
   { name: 'Zeynep34', avatar: '✨' },
@@ -1450,6 +1455,7 @@ function createBotPlayer() {
     id: 'bot_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
     name: profile.name,
     avatar: profile.avatar,
+    title: ["90'lar Efsanesi", "Damar Üstadı", "Rock Yıldızı", "Megastar Fanatiği", "Yenilmez", "Minik Serçe Aşığı", "Gülpembe Yolcusu", "Milenyum Fırtınası", "Türkçe Rap Dehası", "Müzik Profesörü"][Math.floor(Math.random() * 10)],
     platform: 'Mobil',
     totalScore: 0,
     currentRoundAnswered: false,
@@ -1491,7 +1497,7 @@ class DuelRoom {
       totalRounds: this.questions.length,
       settings: this.settings,
       preloadUrls,
-      opponent: { name: this.p2.name, avatar: this.p2.avatar, platform: this.p2.platform },
+      opponent: { name: this.p2.name, avatar: this.p2.avatar, platform: this.p2.platform, title: this.p2.title || 'Çaylak Dinleyici' },
     });
 
     this.p2.send({
@@ -1502,7 +1508,7 @@ class DuelRoom {
       totalRounds: this.questions.length,
       settings: this.settings,
       preloadUrls,
-      opponent: { name: this.p1.name, avatar: this.p1.avatar, platform: this.p1.platform },
+      opponent: { name: this.p1.name, avatar: this.p1.avatar, platform: this.p1.platform, title: this.p1.title || 'Çaylak Dinleyici' },
     });
 
     setTimeout(() => this.startRound(0), 2500);
@@ -2045,6 +2051,7 @@ wss.on('connection', (ws) => {
       if (type === 'join_queue') {
         player.name = data.playerName || 'Oyuncu';
         player.avatar = data.avatar || '🎧';
+        player.title = data.title || 'Çaylak Dinleyici';
         player.platform = data.platform || 'Mobil';
         player.totalScore = 0;
         const cat = data.category || 'pop_90s';
@@ -2246,6 +2253,7 @@ wss.on('connection', (ws) => {
         }
         player.name = data.playerName || 'Misafir';
         player.avatar = data.avatar || '🎧';
+        player.title = data.title || 'Çaylak Dinleyici';
         player.platform = data.platform || 'Mobil';
         room.addPlayer(player);
       } else if (type === 'start_party_game') {

@@ -13,6 +13,7 @@ import 'season_pass_screen.dart';
 import 'daily_song_screen.dart';
 import 'league_screen.dart';
 import '../widgets/party_dialog.dart';
+import '../widgets/profile_titles_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -39,7 +40,7 @@ class HomeScreen extends StatelessWidget {
                     Expanded(
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
-                        onTap: () => _showEditProfileDialog(context, game),
+                        onTap: () => ProfileTitlesDialog.show(context),
                         child: Row(
                           children: [
                             Container(
@@ -97,13 +98,34 @@ class HomeScreen extends StatelessWidget {
                                       const Icon(Icons.edit_rounded, size: 12, color: AppTheme.textMuted),
                                     ],
                                   ),
-                                  Text(
-                                    game.playerStats.totalMatches > 0
-                                        ? '${game.playerStats.wins} Zafer • %${game.playerStats.winRate.toStringAsFixed(0)} Kazanma'
-                                        : 'Seviye 1 • Müzik Çırağı',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.amber),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.amber.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(
+                                            color: AppTheme.amber.withValues(alpha: 0.3),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '🎖️ ${game.selectedTitle}',
+                                          style: const TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppTheme.amber,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        '• ${game.playerStats.wins} Zafer',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -1148,158 +1170,6 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showEditProfileDialog(BuildContext context, GameProvider game) {
-    final textController = TextEditingController(text: game.playerName);
-    String selectedAvatar = game.playerAvatar;
-    final avatars = ['🎧', '🎸', '🎹', '🎷', '🎤', '🎺', '💻', '📱', '🔥', '👑'];
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppTheme.border),
-          ),
-          title: const Text('Profilini Düzenle', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Avatar Seç:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: avatars.map((av) {
-                  final isSel = selectedAvatar == av;
-                  return InkWell(
-                    onTap: () => setDialogState(() => selectedAvatar = av),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isSel ? AppTheme.amber.withValues(alpha: 0.2) : AppTheme.surfaceLight,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: isSel ? AppTheme.amber : Colors.transparent),
-                      ),
-                      child: Text(av, style: const TextStyle(fontSize: 22)),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              const Text('Oyuncu Adı:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: textController,
-                maxLength: 16,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
-                  counterText: '',
-                  filled: true,
-                  fillColor: AppTheme.surfaceLight,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: game.googleUserId != null
-                    ? OutlinedButton(
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          await game.logoutGoogle();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Google hesabından çıkış yapıldı.'),
-                                backgroundColor: AppTheme.amber,
-                              ),
-                            );
-                          }
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppTheme.crimson),
-                          backgroundColor: AppTheme.crimson.withValues(alpha: 0.1),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.logout_rounded, color: AppTheme.crimson, size: 18),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Çıkış Yap (${game.googleUserEmail ?? "Google"})',
-                                style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.crimson, fontSize: 13),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : OutlinedButton(
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          final success = await game.loginWithGoogle();
-                          if (success && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Google ile bağlandınız: ${game.playerName}!'),
-                                backgroundColor: AppTheme.emerald,
-                              ),
-                            );
-                          }
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppTheme.amber),
-                          backgroundColor: AppTheme.amber.withValues(alpha: 0.1),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('🌐', style: TextStyle(fontSize: 16)),
-                            SizedBox(width: 8),
-                            Text(
-                              'Google ile Giriş Yap',
-                              style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('İptal', style: TextStyle(color: AppTheme.textMuted)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final newName = textController.text.trim();
-                if (newName.isNotEmpty) {
-                  game.updateProfile(newName, selectedAvatar);
-                  Navigator.pop(ctx);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.amber,
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Kaydet', style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ],
         ),
       ),
     );

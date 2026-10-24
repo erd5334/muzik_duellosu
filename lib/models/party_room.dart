@@ -2,6 +2,7 @@ class PartyPlayer {
   final String id;
   final String name;
   final String avatar;
+  final String title;
   int score;
   int roundScore;
   bool isHost;
@@ -15,6 +16,7 @@ class PartyPlayer {
     required this.id,
     required this.name,
     required this.avatar,
+    this.title = 'Çaylak Dinleyici',
     this.score = 0,
     this.roundScore = 0,
     this.isHost = false,
@@ -30,6 +32,7 @@ class PartyPlayer {
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? 'Oyuncu',
       avatar: json['avatar'] as String? ?? '🎧',
+      title: json['title'] as String? ?? 'Çaylak Dinleyici',
       score: json['score'] as int? ?? 0,
       roundScore: json['roundScore'] as int? ?? 0,
       isHost: json['isHost'] as bool? ?? false,
