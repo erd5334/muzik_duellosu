@@ -84,6 +84,8 @@ class SeasonMission {
   int current;
   final int xpReward;
   final int coinReward;
+  final String rewardType; // 'coins', 'energy', 'joker', 'shard', 'none'
+  final int rewardAmount;
   bool isClaimed;
   final String icon;
 
@@ -98,11 +100,43 @@ class SeasonMission {
     this.current = 0,
     required this.xpReward,
     this.coinReward = 0,
+    this.rewardType = 'coins',
+    this.rewardAmount = 0,
     this.isClaimed = false,
     required this.icon,
   });
 
   bool get isCompleted => current >= target;
+
+  RewardType get rewardTypeEnum {
+    switch (rewardType) {
+      case 'energy':
+        return RewardType.energy;
+      case 'joker':
+        return RewardType.joker;
+      case 'shard':
+        return RewardType.shard;
+      case 'coins':
+      default:
+        return RewardType.coins;
+    }
+  }
+
+  String get rewardLabel {
+    final amt = rewardAmount > 0 ? rewardAmount : coinReward;
+    if (amt <= 0 || rewardType == 'none') return '';
+    switch (rewardType) {
+      case 'energy':
+        return '+$amt ⚡ Enerji';
+      case 'joker':
+        return '+$amt 🎯 Joker';
+      case 'shard':
+        return '+$amt 💿 Plak Parçası';
+      case 'coins':
+      default:
+        return '+$amt 🪙 Altın';
+    }
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -115,11 +149,20 @@ class SeasonMission {
     'current': current,
     'xpReward': xpReward,
     'coinReward': coinReward,
+    'rewardType': rewardType,
+    'rewardAmount': rewardAmount,
     'isClaimed': isClaimed,
     'icon': icon,
   };
 
   factory SeasonMission.fromJson(Map<String, dynamic> json) {
+    final rawType = json['rewardType'] as String?;
+    final rawAmt = json['rewardAmount'] as int?;
+    final legacyCoins = json['coinReward'] as int? ?? 0;
+
+    final actualType = rawType ?? (legacyCoins > 0 ? 'coins' : 'coins');
+    final actualAmt = rawAmt ?? legacyCoins;
+
     return SeasonMission(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -133,7 +176,9 @@ class SeasonMission {
       target: json['target'] as int? ?? 1,
       current: json['current'] as int? ?? 0,
       xpReward: json['xpReward'] as int? ?? 100,
-      coinReward: json['coinReward'] as int? ?? 0,
+      coinReward: actualType == 'coins' ? actualAmt : 0,
+      rewardType: actualType,
+      rewardAmount: actualAmt,
       isClaimed: json['isClaimed'] as bool? ?? false,
       icon: json['icon'] as String? ?? '🎯',
     );

@@ -804,9 +804,23 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
     mission.isClaimed = true;
     addSeasonPassXp(mission.xpReward);
-    if (mission.coinReward > 0) {
-      _coins += mission.coinReward;
+
+    final amt = mission.rewardAmount > 0 ? mission.rewardAmount : mission.coinReward;
+    if (amt > 0 && mission.rewardType != 'none') {
+      _applyReward(PassReward(
+        type: mission.rewardTypeEnum,
+        amount: amt,
+        title: mission.rewardLabel,
+        icon: mission.rewardType == 'energy'
+            ? '⚡'
+            : (mission.rewardType == 'joker'
+                ? '🎯'
+                : (mission.rewardType == 'shard'
+                    ? '💿'
+                    : '🪙')),
+      ));
     }
+
     _saveUserData();
     notifyListeners();
     return true;

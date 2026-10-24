@@ -933,7 +933,12 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> with SingleTickerPr
                     ),
                   ],
                 ),
-                if (mission.coinReward > 0)
+                if (mission.rewardLabel.isNotEmpty)
+                  Text(
+                    mission.rewardLabel,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white70),
+                  )
+                else if (mission.coinReward > 0)
                   Text(
                     '+${mission.coinReward} 🪙',
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white70),
@@ -947,9 +952,10 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> with SingleTickerPr
                     onPressed: () {
                       final ok = game.claimMissionReward(mission.id);
                       if (ok && context.mounted) {
+                        final extraText = mission.rewardLabel.isNotEmpty ? ' ve ${mission.rewardLabel}' : '';
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('+${mission.xpReward} XP Müzik Pass\'e eklendi! 🎉'),
+                            content: Text('+${mission.xpReward} XP$extraText kazandın! 🎉'),
                             backgroundColor: AppTheme.emerald,
                           ),
                         );

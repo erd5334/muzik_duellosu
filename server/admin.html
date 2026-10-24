@@ -192,6 +192,66 @@
         </div>
       </div>
 
+      <!-- 5. SEZON & GÖREVLER SEKMESİ -->
+      <div id="tab-season" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 style="font-size:18px; font-weight:800; margin:0;">🎟️ Müzik Pass & Canlı Sezon Yönetimi</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Sezon süresini, günlük/haftalık görevleri ve 20 seviyelik kademe ödüllerini canlı olarak yönetin.</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-secondary btn-sm" onclick="loadSeasonPass()">🔄 Yenile</button>
+            <button class="btn btn-sm" onclick="saveSeasonPass()">💾 Değişiklikleri Kaydet & Canlıya Al</button>
+          </div>
+        </div>
+
+        <!-- Sezon Genel Bilgileri -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="font-size:14px; font-weight:800; color:var(--amber); margin-bottom:12px;">📅 Aktif Sezon Ayarları</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div>
+              <label>Sezon Adı (Oyuncuların Gördüğü Başlık)</label>
+              <input type="text" id="sp-name" placeholder="Örn: Sezon 1: 90'lar Fırtınası" style="margin:0;">
+            </div>
+            <div>
+              <label>Sezon Bitiş Tarihi & Saati</label>
+              <input type="datetime-local" id="sp-end-date" style="margin:0;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Görevler Bölümü -->
+        <div style="margin-bottom:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="font-size:16px; font-weight:800;">🎯 Aktif Görevler (<span id="mission-count">0</span>)</div>
+            <button class="btn btn-sm" onclick="openMissionModal()">➕ Yeni Görev Ekle</button>
+          </div>
+          <div id="missions-list" class="grid-3" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;">
+            <!-- Dinamik dolacak -->
+          </div>
+        </div>
+
+        <!-- Kademe (Tier) Ödülleri Bölümü -->
+        <div class="card">
+          <div style="font-size:16px; font-weight:800; color:var(--amber); margin-bottom:6px;">🏆 20 Kademe Ödül Dağılımı</div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 16px 0;">Oyuncuların XP topladıkça açacağı ücretsiz ve Gold VIP ödülleri. Ödül başlıklarını kutucuklardan anında değiştirebilirsiniz.</p>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:13px;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border); color:var(--text-muted);">
+                  <th style="padding:8px;">Seviye</th>
+                  <th style="padding:8px;">🎁 Ücretsiz Ödül</th>
+                  <th style="padding:8px;">👑 Gold VIP Ödülü</th>
+                </tr>
+              </thead>
+              <tbody id="tiers-table-body">
+                <!-- Dinamik dolacak -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -557,11 +617,12 @@
     function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       event.target.classList.add('active');
-      document.getElementById('tab-badges').style.display = tab === 'badges' ? 'block' : 'none';
-      document.getElementById('tab-categories').style.display = tab === 'categories' ? 'block' : 'none';
-      document.getElementById('tab-store').style.display = tab === 'store' ? 'block' : 'none';
-      document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
-      document.getElementById('tab-season').style.display = tab === 'season' ? 'block' : 'none';
+      const bEl = document.getElementById('tab-badges'); if (bEl) bEl.style.display = tab === 'badges' ? 'block' : 'none';
+      const cEl = document.getElementById('tab-categories'); if (cEl) cEl.style.display = tab === 'categories' ? 'block' : 'none';
+      const sEl = document.getElementById('tab-store'); if (sEl) sEl.style.display = tab === 'store' ? 'block' : 'none';
+      const uEl = document.getElementById('tab-users'); if (uEl) uEl.style.display = tab === 'users' ? 'block' : 'none';
+      const seasonEl = document.getElementById('tab-season');
+      if (seasonEl) seasonEl.style.display = tab === 'season' ? 'block' : 'none';
       if (tab === 'season') loadSeasonPass();
       if (tab === 'users') loadUsers();
       if (tab === 'store') loadStoreItems();
@@ -1329,12 +1390,12 @@
               seasonName: "Sezon 1: 90'lar Fırtınası",
               endDate: new Date(Date.now() + 28*24*3600*1000).toISOString(),
               missions: [
-                { id: 'daily_matches_3', title: 'Sahneye Çık', description: '3 müzik düellosu tamamla', category: 'daily', actionKey: 'complete_match', target: 3, xpReward: 120, coinReward: 50, icon: '🎤' },
-                { id: 'daily_win_1', title: 'Günün Yıldızı', description: 'Herhangi bir kategoride 1 galibiyet al', category: 'daily', actionKey: 'win_match', target: 1, xpReward: 150, coinReward: 75, icon: '⭐' },
-                { id: 'daily_fast_2', title: 'Hızlı Refleks', description: '2 şarkıyı 3 saniyenin altında doğru bil', category: 'daily', actionKey: 'fast_answer', target: 2, xpReward: 130, coinReward: 40, icon: '⚡' },
-                { id: 'weekly_wins_10', title: 'Seri Galip', description: 'Hafta boyunca toplam 10 düello kazan', category: 'weekly', actionKey: 'win_match', target: 10, xpReward: 600, coinReward: 250, icon: '🔥' },
-                { id: 'weekly_pop90s_5', title: '90’lar Rüzgarı', description: "90'lar Pop kategorisinde 5 galibiyet elde et", category: 'weekly', actionKey: 'category_win', filterCategory: 'pop_90s', target: 5, xpReward: 500, coinReward: 200, icon: '📻' },
-                { id: 'season_total_50', title: 'Sahne Efsanesi', description: 'Sezon boyunca 50 düello kazan', category: 'seasonal', actionKey: 'win_match', target: 50, xpReward: 2500, coinReward: 1200, icon: '👑' }
+                { id: 'daily_matches_3', title: 'Sahneye Çık', description: '3 müzik düellosu tamamla', category: 'daily', actionKey: 'complete_match', target: 3, xpReward: 120, rewardType: 'energy', rewardAmount: 3, icon: '🎤' },
+                { id: 'daily_win_1', title: 'Günün Yıldızı', description: 'Herhangi bir kategoride 1 galibiyet al', category: 'daily', actionKey: 'win_match', target: 1, xpReward: 150, rewardType: 'coins', rewardAmount: 75, icon: '⭐' },
+                { id: 'daily_fast_2', title: 'Hızlı Refleks', description: '2 şarkıyı 3 saniyenin altında doğru bil', category: 'daily', actionKey: 'fast_answer', target: 2, xpReward: 130, rewardType: 'joker', rewardAmount: 1, icon: '⚡' },
+                { id: 'weekly_wins_10', title: 'Seri Galip', description: 'Hafta boyunca toplam 10 düello kazan', category: 'weekly', actionKey: 'win_match', target: 10, xpReward: 600, rewardType: 'coins', rewardAmount: 250, icon: '🔥' },
+                { id: 'weekly_pop90s_5', title: '90’lar Rüzgarı', description: "90'lar Pop kategorisinde 5 galibiyet elde et", category: 'weekly', actionKey: 'category_win', filterCategory: 'pop_90s', target: 5, xpReward: 500, rewardType: 'shard', rewardAmount: 15, icon: '📻' },
+                { id: 'season_total_50', title: 'Sahne Efsanesi', description: 'Sezon boyunca 50 düello kazan', category: 'seasonal', actionKey: 'win_match', target: 50, xpReward: 2500, rewardType: 'shard', rewardAmount: 45, icon: '👑' }
               ],
               tiers: Array.from({length: 20}, (_, i) => ({
                 level: i + 1,
@@ -1379,7 +1440,7 @@
           <div style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:12px; font-weight:700;">
               <span style="color:var(--amber);">⚡ +${m.xpReward} XP</span>
-              ${m.coinReward ? `<span style="color:#fff; margin-left:8px;">🪙 +${m.coinReward}</span>` : ''}
+              ${getRewardBadgeHtml(m)}
               <span style="color:var(--text-muted); margin-left:8px;">🎯 Hedef: ${m.target}</span>
             </div>
             <div style="display:flex; gap:6px;">
@@ -1395,25 +1456,86 @@
       const tbody = document.getElementById('tiers-table-body');
       tbody.innerHTML = tiers.map((t, idx) => `
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-          <td style="padding:10px 8px; font-weight:800; color:var(--amber);">Seviye ${t.level}</td>
-          <td style="padding:10px 8px;">
-            <span style="font-size:16px;">${t.freeReward.icon}</span> 
-            <input type="text" value="${t.freeReward.title}" onchange="updateTierReward(${idx}, false, this.value)" style="width:200px; display:inline-block; padding:4px 8px; margin:0 0 0 6px; font-size:12px;">
+          <td style="padding:10px 8px; font-weight:800; color:var(--amber); vertical-align:middle;">Seviye ${t.level}</td>
+          <td style="padding:10px 8px; vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <select onchange="updateTierRewardType(${idx}, false, this.value)" style="width:105px; padding:4px 6px; font-size:12px; margin:0;">
+                <option value="coins" ${t.freeReward.type === 'coins' ? 'selected' : ''}>🪙 Altın</option>
+                <option value="energy" ${t.freeReward.type === 'energy' ? 'selected' : ''}>⚡ Enerji</option>
+                <option value="joker" ${t.freeReward.type === 'joker' ? 'selected' : ''}>🎯 Joker</option>
+                <option value="shard" ${t.freeReward.type === 'shard' ? 'selected' : ''}>💿 Plak</option>
+              </select>
+              <input type="number" value="${t.freeReward.amount || 0}" min="1" onchange="updateTierRewardAmount(${idx}, false, this.value)" style="width:65px; padding:4px 6px; font-size:12px; margin:0;" title="Miktar">
+              <input type="text" value="${t.freeReward.title}" onchange="updateTierRewardTitle(${idx}, false, this.value)" style="width:140px; padding:4px 6px; font-size:12px; margin:0;" title="Görünen İsim">
+            </div>
           </td>
-          <td style="padding:10px 8px;">
-            <span style="font-size:16px;">${t.goldReward.icon}</span>
-            <input type="text" value="${t.goldReward.title}" onchange="updateTierReward(${idx}, true, this.value)" style="width:220px; display:inline-block; padding:4px 8px; margin:0 0 0 6px; font-size:12px; border-color:rgba(245,158,11,0.4);">
+          <td style="padding:10px 8px; vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <select onchange="updateTierRewardType(${idx}, true, this.value)" style="width:105px; padding:4px 6px; font-size:12px; margin:0; border-color:rgba(245,158,11,0.5);">
+                <option value="coins" ${t.goldReward.type === 'coins' ? 'selected' : ''}>🪙 Altın</option>
+                <option value="energy" ${t.goldReward.type === 'energy' ? 'selected' : ''}>⚡ Enerji</option>
+                <option value="joker" ${t.goldReward.type === 'joker' ? 'selected' : ''}>🎯 Joker</option>
+                <option value="shard" ${t.goldReward.type === 'shard' ? 'selected' : ''}>💿 Plak</option>
+              </select>
+              <input type="number" value="${t.goldReward.amount || 0}" min="1" onchange="updateTierRewardAmount(${idx}, true, this.value)" style="width:65px; padding:4px 6px; font-size:12px; margin:0; border-color:rgba(245,158,11,0.5);" title="Miktar">
+              <input type="text" value="${t.goldReward.title}" onchange="updateTierRewardTitle(${idx}, true, this.value)" style="width:160px; padding:4px 6px; font-size:12px; margin:0; border-color:rgba(245,158,11,0.5);" title="Görünen İsim">
+            </div>
           </td>
         </tr>
       `).join('');
     }
 
-    function updateTierReward(idx, isGold, newTitle) {
+    function getRewardBadgeHtml(m) {
+      const type = m.rewardType || (m.coinReward > 0 ? 'coins' : 'coins');
+      const amt = m.rewardAmount !== undefined ? m.rewardAmount : (m.coinReward || 0);
+      if (amt <= 0 || type === 'none') return '';
+      if (type === 'energy') return `<span style="color:#10b981; margin-left:8px; font-weight:800;">⚡ +${amt} Enerji</span>`;
+      if (type === 'joker') return `<span style="color:#a855f7; margin-left:8px; font-weight:800;">🎯 +${amt} Joker</span>`;
+      if (type === 'shard') return `<span style="color:#38bdf8; margin-left:8px; font-weight:800;">💿 +${amt} Plak</span>`;
+      return `<span style="color:#fbbf24; margin-left:8px; font-weight:800;">🪙 +${amt} Altın</span>`;
+    }
+
+    function updateTierRewardType(idx, isGold, newType) {
       if (!currentSeasonData || !currentSeasonData.tiers[idx]) return;
-      if (isGold) {
-        currentSeasonData.tiers[idx].goldReward.title = newTitle;
+      const target = isGold ? currentSeasonData.tiers[idx].goldReward : currentSeasonData.tiers[idx].freeReward;
+      target.type = newType;
+      const icons = { coins: '🪙', energy: '⚡', joker: '🎯', shard: '💿' };
+      target.icon = icons[newType] || '🎁';
+      const names = { coins: 'Altın', energy: 'Enerji', joker: 'Joker', shard: 'Plak Parçası' };
+      target.title = target.amount + ' ' + (names[newType] || '');
+      renderSeasonPass();
+    }
+
+    function updateTierRewardAmount(idx, isGold, newAmount) {
+      if (!currentSeasonData || !currentSeasonData.tiers[idx]) return;
+      const target = isGold ? currentSeasonData.tiers[idx].goldReward : currentSeasonData.tiers[idx].freeReward;
+      target.amount = parseInt(newAmount) || 0;
+      const names = { coins: 'Altın', energy: 'Enerji', joker: 'Joker', shard: 'Plak Parçası' };
+      target.title = target.amount + ' ' + (names[target.type] || '');
+      renderSeasonPass();
+    }
+
+    function updateTierRewardTitle(idx, isGold, newTitle) {
+      if (!currentSeasonData || !currentSeasonData.tiers[idx]) return;
+      const target = isGold ? currentSeasonData.tiers[idx].goldReward : currentSeasonData.tiers[idx].freeReward;
+      target.title = newTitle;
+    }
+
+    function onMissionRewardTypeChange() {
+      const type = document.getElementById('m-reward-type').value;
+      const box = document.getElementById('m-reward-amount-box');
+      const label = document.getElementById('m-reward-amount-label');
+      if (type === 'none') {
+        box.style.opacity = '0.3';
+        box.style.pointerEvents = 'none';
+        label.innerText = 'Ödül Yok';
       } else {
-        currentSeasonData.tiers[idx].freeReward.title = newTitle;
+        box.style.opacity = '1';
+        box.style.pointerEvents = 'auto';
+        if (type === 'coins') label.innerText = '🪙 Altın Miktarı';
+        else if (type === 'energy') label.innerText = '⚡ Enerji Miktarı';
+        else if (type === 'joker') label.innerText = '🎯 Joker Miktarı';
+        else if (type === 'shard') label.innerText = '💿 Plak Parçası';
       }
     }
 
@@ -1431,9 +1553,17 @@
         document.getElementById('m-action').value = m.actionKey;
         document.getElementById('m-target').value = m.target;
         document.getElementById('m-xp').value = m.xpReward;
-        document.getElementById('m-coins').value = m.coinReward || 0;
+        
+        const rType = m.rewardType || (m.coinReward > 0 ? 'coins' : 'coins');
+        const rAmt = m.rewardAmount !== undefined ? m.rewardAmount : (m.coinReward || 0);
+        document.getElementById('m-reward-type').value = rType;
+        document.getElementById('m-reward-amount').value = rAmt;
+        onMissionRewardTypeChange();
       } else {
         document.getElementById('mission-modal-title').innerText = '🎯 Yeni Görev Ekle';
+        document.getElementById('m-reward-type').value = 'coins';
+        document.getElementById('m-reward-amount').value = 50;
+        onMissionRewardTypeChange();
       }
       document.getElementById('mission-modal').style.display = 'flex';
     }
@@ -1455,6 +1585,8 @@
     function saveMissionForm(e) {
       e.preventDefault();
       const editIdx = document.getElementById('m-id').value;
+      const rType = document.getElementById('m-reward-type').value;
+      const rAmt = parseInt(document.getElementById('m-reward-amount').value) || 0;
       const missionObj = {
         id: editIdx !== '' ? currentSeasonData.missions[editIdx].id : 'm_' + Date.now(),
         title: document.getElementById('m-title').value,
@@ -1464,7 +1596,9 @@
         actionKey: document.getElementById('m-action').value,
         target: parseInt(document.getElementById('m-target').value) || 1,
         xpReward: parseInt(document.getElementById('m-xp').value) || 100,
-        coinReward: parseInt(document.getElementById('m-coins').value) || 0,
+        rewardType: rType,
+        rewardAmount: rAmt,
+        coinReward: rType === 'coins' ? rAmt : 0,
       };
 
       if (editIdx !== '') {
@@ -1552,8 +1686,18 @@
             <input type="number" id="m-xp" value="150" min="10" required>
           </div>
           <div style="flex:1;">
-            <label>Bonus Altın</label>
-            <input type="number" id="m-coins" value="50" min="0">
+            <label>Ek Ödül Türü</label>
+            <select id="m-reward-type" onchange="onMissionRewardTypeChange()">
+              <option value="coins">🪙 Altın (Coins)</option>
+              <option value="energy">⚡ Enerji (Energy)</option>
+              <option value="joker">🎯 Joker Paketi (50/50)</option>
+              <option value="shard">💿 Plak Parçası (Koleksiyon)</option>
+              <option value="none">❌ Ek Ödül Yok (Sadece XP)</option>
+            </select>
+          </div>
+          <div style="flex:1;" id="m-reward-amount-box">
+            <label id="m-reward-amount-label">Ödül Miktarı</label>
+            <input type="number" id="m-reward-amount" value="50" min="0">
           </div>
         </div>
 
