@@ -2107,6 +2107,8 @@ function generateRoomCode() {
   return code;
 }
 
+const activeUserSessions = new Map(); // googleId -> { ws, send, time }
+
 wss.on('connection', (ws) => {
   const player = {
     id: 'p_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
@@ -2127,6 +2129,7 @@ wss.on('connection', (ws) => {
       const type = data.type;
 
       if (data.googleId) {
+        player.googleId = data.googleId;
         const u = getUserByGoogleId(data.googleId);
         if (u && u.is_banned) {
           player.send({
@@ -2135,6 +2138,22 @@ wss.on('connection', (ws) => {
           });
           return;
         }
+
+        // Tekil Aktif Oturum Koruması (Single Active Session)
+        if (activeUserSessions.has(data.googleId)) {
+          const oldSession = activeUserSessions.get(data.googleId);
+          if (oldSession && oldSession.ws !== ws) {
+            console.log(`⚠️ [EŞZAMANLI GİRİŞ ENGELİ] ${player.name || 'Oyuncu'} (${data.googleId}) başka bir cihazdan bağlandı. Eski cihazdaki oturum sonlandırılıyor.`);
+            try {
+              oldSession.send({
+                type: 'session_terminated',
+                message: 'Hesabınıza başka bir cihazdan giriş yapıldı. Güvenliğiniz için bu cihazdaki oturumunuz kapatıldı.'
+              });
+              oldSession.ws.close();
+            } catch (_) {}
+          }
+        }
+        activeUserSessions.set(data.googleId, { ws, send: player.send, time: Date.now() });
       }
 
       if (type === 'join_queue') {
@@ -2387,6 +2406,9 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    if (player.googleId && activeUserSessions.get(player.googleId)?.ws === ws) {
+      activeUserSessions.delete(player.googleId);
+    }
     if (player.botTimer) clearTimeout(player.botTimer);
     for (const cat in publicQueues) {
       publicQueues[cat] = publicQueues[cat].filter(p => p.id !== player.id);

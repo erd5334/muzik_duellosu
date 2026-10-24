@@ -730,6 +730,13 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  void claimWelcomeGift({int coins = 500, int jokers = 1}) {
+    _coins += coins;
+    powerUp5050Count += jokers;
+    _saveUserData();
+    notifyListeners();
+  }
+
   void awardMatchRewards() {
     final isWinner = _userTotalScore > _opponentTotalScore;
     final isDraw = _userTotalScore == _opponentTotalScore;
@@ -2141,6 +2148,14 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
           await prefs.setInt('user_cooldown_until', _cooldownUntil);
           _errorMessage = data['message'] as String? ?? 'Sık maç terk etme cezası uygulandı.';
           _status = GameStatus.error;
+          notifyListeners();
+          break;
+
+        case 'session_terminated':
+          _errorMessage = data['message'] as String? ??
+              'Hesabınıza başka bir cihazdan giriş yapıldı. Güvenliğiniz için bu cihazdaki oturumunuz kapatıldı.';
+          _status = GameStatus.error;
+          _disconnectWebSocket();
           notifyListeners();
           break;
 

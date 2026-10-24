@@ -14,9 +14,23 @@ import 'daily_song_screen.dart';
 import 'league_screen.dart';
 import '../widgets/party_dialog.dart';
 import '../widgets/profile_titles_dialog.dart';
+import '../widgets/onboarding_dialog.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      OnboardingDialog.checkAndShow(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

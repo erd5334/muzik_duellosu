@@ -154,6 +154,23 @@ class PurchaseService {
     }
   }
 
+  /// Satın Alımları Geri Yükle (Apple StoreKit & Google Play Guideline 3.1.1)
+  Future<bool> restorePurchases({GameProvider? game}) async {
+    if (game != null) _activeGameProvider = game;
+    if (kIsWeb || !_isAvailable) {
+      debugPrint('[IAP] Satın alma servisi bu platformda kullanılamıyor.');
+      return false;
+    }
+    try {
+      debugPrint('🔄 [IAP RESTORE] Satın alımlar Apple StoreKit / Google Play mağazasından sorgulanıyor...');
+      await _iap.restorePurchases();
+      return true;
+    } catch (e) {
+      debugPrint('[IAP RESTORE HATA] Satın alımları geri yükleme hatası: $e');
+      return false;
+    }
+  }
+
   void dispose() {
     _subscription?.cancel();
   }

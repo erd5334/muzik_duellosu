@@ -233,6 +233,40 @@ class StoreDialog extends StatelessWidget {
                         }),
                         const SizedBox(height: 12),
                       ],
+
+                      // Satın Alımları Geri Yükle (Apple StoreKit & Google Play Guideline 3.1.1)
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: () async {
+                            final success = await PurchaseService.instance.restorePurchases(game: game);
+                            if (context.mounted) {
+                              if (success) {
+                                _showPurchaseSuccess(
+                                  context,
+                                  'Satın alımlarınız kontrol edildi ve geçerli haklarınız geri yüklendi! 🔄',
+                                );
+                              } else {
+                                _showPurchaseError(
+                                  context,
+                                  'Geri yüklenecek aktif bir satın alım bulunamadı.',
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.restore_rounded, size: 16, color: AppTheme.textMuted),
+                          label: const Text(
+                            'Satın Alımları Geri Yükle (Restore Purchases)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textMuted,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
