@@ -145,6 +145,8 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   int get lastEarnedCoins => _lastEarnedCoins;
   int _lastEarnedShards = 0;
   int get lastEarnedShards => _lastEarnedShards;
+  int _lastEarnedXp = 0;
+  int get lastEarnedXp => _lastEarnedXp;
   String? _lastRewardedBadgeName;
   String? get lastRewardedBadgeName => _lastRewardedBadgeName;
 
@@ -642,6 +644,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
     // Sezon Bileti XP'si & Görev Takibi
     final earnedXp = isWinner ? 60 : (isDraw ? 35 : 20);
+    _lastEarnedXp = earnedXp;
     _seasonPass.currentXp += earnedXp;
     trackMissionProgress('complete_match', amount: 1);
     if (isWinner) {
@@ -736,7 +739,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     );
     _coins += 500;
     powerUp5050Count += 2;
-    _energy = min(maxEnergy, _energy + 5);
+    _energy += 5; // Kazanılan ödül enerjisi 10 tavanına takılmaz, eklenir
 
     final locked = _badges.where((b) => !b.isUnlocked).toList();
     if (locked.isNotEmpty) {
@@ -756,7 +759,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         _coins += reward.amount;
         break;
       case RewardType.energy:
-        _energy = min(maxEnergy, _energy + reward.amount);
+        _energy += reward.amount; // Ödül enerjisi 10 tavanına takılmaz, taşar (örn: 8 + 5 = 13)
         break;
       case RewardType.joker:
         powerUp5050Count += reward.amount;
@@ -1166,6 +1169,58 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
             notifyListeners();
             PurchaseService.instance.queryDynamicProducts(_storeItems.where((i) => i.isInApp).map((i) => i.id).toSet());
           }
+        }
+
+        // 4. Canlı Sezon Bileti & Görevler (LiveOps Müzik Pass)
+        if (data['season_pass'] != null && data['season_pass'] is Map) {
+          final Map<String, dynamic> remotePass = Map<String, dynamic>.from(data['season_pass']);
+          final String sId = remotePass['seasonId'] ?? _seasonPass.seasonId;
+          final String sName = remotePass['seasonName'] ?? _seasonPass.seasonName;
+          final DateTime sEndDate = DateTime.tryParse(remotePass['endDate']?.toString() ?? '') ?? _seasonPass.endDate;
+
+          // Seviyeleri (Tiers) yerel haklarla birleştir
+          List<SeasonPassTier> updatedTiers = List.from(_seasonPass.tiers);
+          if (remotePass['tiers'] is List) {
+            final List remoteTiersList = remotePass['tiers'];
+            updatedTiers = remoteTiersList.map((tJson) {
+              final tier = SeasonPassTier.fromJson(Map<String, dynamic>.from(tJson));
+              final localTier = _seasonPass.tiers.where((lt) => lt.level == tier.level).firstOrNull;
+              if (localTier != null) {
+                tier.isFreeClaimed = localTier.isFreeClaimed;
+                tier.isGoldClaimed = localTier.isGoldClaimed;
+              }
+              return tier;
+            }).toList();
+          }
+
+          // Görevleri (Missions) yerel ilerleme ile birleştir
+          List<SeasonMission> updatedMissions = List.from(_seasonPass.missions);
+          if (remotePass['missions'] is List) {
+            final List remoteMissionsList = remotePass['missions'];
+            updatedMissions = remoteMissionsList.map((mJson) {
+              final mission = SeasonMission.fromJson(Map<String, dynamic>.from(mJson));
+              final localMission = _seasonPass.missions.where((lm) => lm.id == mission.id).firstOrNull;
+              if (localMission != null) {
+                mission.current = localMission.current;
+                mission.isClaimed = localMission.isClaimed;
+              }
+              return mission;
+            }).toList();
+          }
+
+          _seasonPass = SeasonPassData(
+            seasonId: sId,
+            seasonName: sName,
+            endDate: sEndDate,
+            currentXp: _seasonPass.currentXp,
+            isGoldUnlocked: _seasonPass.isGoldUnlocked,
+            endlessChestClaimCount: _seasonPass.endlessChestClaimCount,
+            tiers: updatedTiers,
+            missions: updatedMissions,
+          );
+          await _saveUserData();
+          notifyListeners();
+          debugPrint('🎟️ [MÜZİK PASS GÜNCELLENDİ] Uzak sunucudan Sezon: $sName ve ${updatedMissions.length} görev yüklendi.');
         }
       }
     } catch (e) {

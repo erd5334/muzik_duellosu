@@ -68,6 +68,12 @@ try {
       is_active INTEGER DEFAULT 1,
       rewards_json TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS season_pass (
+      id TEXT PRIMARY KEY,
+      data_json TEXT,
+      updated_at INTEGER
+    );
   `);
 
   // Güvenli Sütun Migrasyonu (Mevcut Veritabanı İçin)
@@ -186,6 +192,38 @@ function getUserByGoogleId(googleId) {
   if (!db) return null;
   const stmt = db.prepare('SELECT * FROM users WHERE google_id = ?');
   return stmt.get(googleId);
+}
+
+
+function getActiveSeasonPass() {
+  if (!db) return null;
+  try {
+    const row = db.prepare('SELECT data_json FROM season_pass WHERE id = ?').get('active_season');
+    if (row && row.data_json) {
+      return JSON.parse(row.data_json);
+    }
+  } catch (e) {
+    console.error('Season pass okuma hatası:', e);
+  }
+  return null;
+}
+
+function saveActiveSeasonPass(data) {
+  if (!db) return false;
+  try {
+    const jsonStr = typeof data === 'string' ? data : JSON.stringify(data);
+    const now = Date.now();
+    const existing = db.prepare('SELECT id FROM season_pass WHERE id = ?').get('active_season');
+    if (existing) {
+      db.prepare('UPDATE season_pass SET data_json = ?, updated_at = ? WHERE id = ?').run(jsonStr, now, 'active_season');
+    } else {
+      db.prepare('INSERT INTO season_pass (id, data_json, updated_at) VALUES (?, ?, ?)').run('active_season', jsonStr, now);
+    }
+    return true;
+  } catch (e) {
+    console.error('Season pass kaydetme hatası:', e);
+    return false;
+  }
 }
 
 const LEGACY_BADGE_MAP = {
@@ -392,6 +430,7 @@ const server = http.createServer(async (req, res) => {
       categories: getAllCategories(),
       badges: getAllBadges(),
       store_items: getAllStoreItems(),
+      season_pass: getActiveSeasonPass(),
     }));
     return;
   }
@@ -627,6 +666,31 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 7. İstatistikler & Kullanıcılar
+  // 6.5. Sezon Bileti & Görevler Yönetimi
+  if (req.method === 'GET' && req.url === '/api/admin/season-pass') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(getActiveSeasonPass() || {}));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/admin/season-pass/save') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body);
+        const ok = saveActiveSeasonPass(payload);
+        console.log(`🎟️ [SEZON BİLETİ GÜNCELLENDİ] ${payload.seasonName || 'Aktif Sezon'}`);
+        res.writeHead(ok ? 200 : 500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: ok }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   if (req.method === 'GET' && req.url === '/api/admin/stats') {
     const uCount = db ? db.prepare('SELECT COUNT(*) as count FROM users').get().count : 0;
     res.writeHead(200, { 'Content-Type': 'application/json' });

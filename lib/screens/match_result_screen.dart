@@ -132,7 +132,7 @@ class MatchResultScreen extends StatelessWidget {
                       ],
                     ),
 
-                    if (game.lastEarnedCoins > 0 || game.lastEarnedShards > 0) ...[
+                    if (game.lastEarnedCoins > 0 || game.lastEarnedShards > 0 || game.lastEarnedXp > 0) ...[
                       const SizedBox(height: 14),
                       const Divider(color: AppTheme.borderSubtle, height: 1),
                       const SizedBox(height: 12),
@@ -141,6 +141,32 @@ class MatchResultScreen extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
+                          // Sezon Pass XP Ödülü
+                          if (game.lastEarnedXp > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('⚡', style: TextStyle(fontSize: 14)),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '+${game.lastEarnedXp} Sezon XP',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF38BDF8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           // Altın Ödülü
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

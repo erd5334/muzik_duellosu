@@ -124,6 +124,7 @@
         <button class="tab-btn" onclick="switchTab('categories')">📁 Kategoriler</button>
         <button class="tab-btn" onclick="switchTab('store')">🛍️ Mağaza ve Paketler</button>
         <button class="tab-btn" onclick="switchTab('users')">👥 Kayıtlı Oyuncular</button>
+        <button class="tab-btn" onclick="switchTab('season')">🎟️ Sezon & Görevler</button>
       </div>
 
       <!-- 1. PLAK KOLEKSİYONU SEKMESİ -->
@@ -560,6 +561,8 @@
       document.getElementById('tab-categories').style.display = tab === 'categories' ? 'block' : 'none';
       document.getElementById('tab-store').style.display = tab === 'store' ? 'block' : 'none';
       document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
+      document.getElementById('tab-season').style.display = tab === 'season' ? 'block' : 'none';
+      if (tab === 'season') loadSeasonPass();
       if (tab === 'users') loadUsers();
       if (tab === 'store') loadStoreItems();
     }
@@ -1312,6 +1315,255 @@
       .then(r => r.json())
       .then(() => loadAllData());
     }
+  
+    let currentSeasonData = null;
+
+    function loadSeasonPass() {
+      fetch('/api/admin/season-pass')
+        .then(r => r.json())
+        .then(data => {
+          if (!data || !data.seasonName) {
+            // Varsayılan boş yapı
+            data = {
+              seasonId: 'season_1',
+              seasonName: "Sezon 1: 90'lar Fırtınası",
+              endDate: new Date(Date.now() + 28*24*3600*1000).toISOString(),
+              missions: [
+                { id: 'daily_matches_3', title: 'Sahneye Çık', description: '3 müzik düellosu tamamla', category: 'daily', actionKey: 'complete_match', target: 3, xpReward: 120, coinReward: 50, icon: '🎤' },
+                { id: 'daily_win_1', title: 'Günün Yıldızı', description: 'Herhangi bir kategoride 1 galibiyet al', category: 'daily', actionKey: 'win_match', target: 1, xpReward: 150, coinReward: 75, icon: '⭐' },
+                { id: 'daily_fast_2', title: 'Hızlı Refleks', description: '2 şarkıyı 3 saniyenin altında doğru bil', category: 'daily', actionKey: 'fast_answer', target: 2, xpReward: 130, coinReward: 40, icon: '⚡' },
+                { id: 'weekly_wins_10', title: 'Seri Galip', description: 'Hafta boyunca toplam 10 düello kazan', category: 'weekly', actionKey: 'win_match', target: 10, xpReward: 600, coinReward: 250, icon: '🔥' },
+                { id: 'weekly_pop90s_5', title: '90’lar Rüzgarı', description: "90'lar Pop kategorisinde 5 galibiyet elde et", category: 'weekly', actionKey: 'category_win', filterCategory: 'pop_90s', target: 5, xpReward: 500, coinReward: 200, icon: '📻' },
+                { id: 'season_total_50', title: 'Sahne Efsanesi', description: 'Sezon boyunca 50 düello kazan', category: 'seasonal', actionKey: 'win_match', target: 50, xpReward: 2500, coinReward: 1200, icon: '👑' }
+              ],
+              tiers: Array.from({length: 20}, (_, i) => ({
+                level: i + 1,
+                requiredXp: 250,
+                freeReward: { type: 'coins', amount: 150 + (i*10), title: (150 + (i*10)) + ' Altın', icon: '🪙' },
+                goldReward: { type: i === 19 ? 'shard' : 'joker', amount: i === 19 ? 50 : 2, title: i === 19 ? 'Efsanevi Plak Tacı & 50 Plak' : '2x Joker Paketi', icon: i === 19 ? '👑' : '✨' }
+              }))
+            };
+          }
+          currentSeasonData = data;
+          renderSeasonPass();
+        })
+        .catch(err => alert('Sezon verisi yüklenemedi: ' + err.message));
+    }
+
+    function renderSeasonPass() {
+      if (!currentSeasonData) return;
+      document.getElementById('sp-name').value = currentSeasonData.seasonName || '';
+      
+      if (currentSeasonData.endDate) {
+        const d = new Date(currentSeasonData.endDate);
+        const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        document.getElementById('sp-end-date').value = iso;
+      }
+
+      // Görevleri listele
+      const missions = currentSeasonData.missions || [];
+      document.getElementById('mission-count').innerText = missions.length;
+      const mList = document.getElementById('missions-list');
+      mList.innerHTML = missions.map((m, idx) => `
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:26px;">${m.icon || '🎯'}</span>
+              <div>
+                <div style="font-weight:800; font-size:15px; color:#fff;">${m.title}</div>
+                <div style="font-size:11px; color:var(--text-muted);">${m.description}</div>
+              </div>
+            </div>
+            <span class="badge-pill" style="font-size:10px;">${m.category.toUpperCase()}</span>
+          </div>
+          <div style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:12px; font-weight:700;">
+              <span style="color:var(--amber);">⚡ +${m.xpReward} XP</span>
+              ${m.coinReward ? `<span style="color:#fff; margin-left:8px;">🪙 +${m.coinReward}</span>` : ''}
+              <span style="color:var(--text-muted); margin-left:8px;">🎯 Hedef: ${m.target}</span>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-sm btn-secondary" onclick="editMission(${idx})">Düzenle</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteMission(${idx})">Sil</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // Seviyeleri listele
+      const tiers = currentSeasonData.tiers || [];
+      const tbody = document.getElementById('tiers-table-body');
+      tbody.innerHTML = tiers.map((t, idx) => `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 8px; font-weight:800; color:var(--amber);">Seviye ${t.level}</td>
+          <td style="padding:10px 8px;">
+            <span style="font-size:16px;">${t.freeReward.icon}</span> 
+            <input type="text" value="${t.freeReward.title}" onchange="updateTierReward(${idx}, false, this.value)" style="width:200px; display:inline-block; padding:4px 8px; margin:0 0 0 6px; font-size:12px;">
+          </td>
+          <td style="padding:10px 8px;">
+            <span style="font-size:16px;">${t.goldReward.icon}</span>
+            <input type="text" value="${t.goldReward.title}" onchange="updateTierReward(${idx}, true, this.value)" style="width:220px; display:inline-block; padding:4px 8px; margin:0 0 0 6px; font-size:12px; border-color:rgba(245,158,11,0.4);">
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateTierReward(idx, isGold, newTitle) {
+      if (!currentSeasonData || !currentSeasonData.tiers[idx]) return;
+      if (isGold) {
+        currentSeasonData.tiers[idx].goldReward.title = newTitle;
+      } else {
+        currentSeasonData.tiers[idx].freeReward.title = newTitle;
+      }
+    }
+
+    function openMissionModal(editIdx = null) {
+      document.getElementById('mission-form').reset();
+      document.getElementById('m-id').value = '';
+      if (editIdx !== null && currentSeasonData.missions[editIdx]) {
+        const m = currentSeasonData.missions[editIdx];
+        document.getElementById('mission-modal-title').innerText = '🎯 Görevi Düzenle';
+        document.getElementById('m-id').value = editIdx;
+        document.getElementById('m-title').value = m.title;
+        document.getElementById('m-desc').value = m.description;
+        document.getElementById('m-category').value = m.category;
+        document.getElementById('m-icon').value = m.icon;
+        document.getElementById('m-action').value = m.actionKey;
+        document.getElementById('m-target').value = m.target;
+        document.getElementById('m-xp').value = m.xpReward;
+        document.getElementById('m-coins').value = m.coinReward || 0;
+      } else {
+        document.getElementById('mission-modal-title').innerText = '🎯 Yeni Görev Ekle';
+      }
+      document.getElementById('mission-modal').style.display = 'flex';
+    }
+
+    function closeMissionModal() {
+      document.getElementById('mission-modal').style.display = 'none';
+    }
+
+    function editMission(idx) {
+      openMissionModal(idx);
+    }
+
+    function deleteMission(idx) {
+      if (!confirm('Bu görevi silmek istediğinize emin misiniz?')) return;
+      currentSeasonData.missions.splice(idx, 1);
+      renderSeasonPass();
+    }
+
+    function saveMissionForm(e) {
+      e.preventDefault();
+      const editIdx = document.getElementById('m-id').value;
+      const missionObj = {
+        id: editIdx !== '' ? currentSeasonData.missions[editIdx].id : 'm_' + Date.now(),
+        title: document.getElementById('m-title').value,
+        description: document.getElementById('m-desc').value,
+        category: document.getElementById('m-category').value,
+        icon: document.getElementById('m-icon').value || '🎯',
+        actionKey: document.getElementById('m-action').value,
+        target: parseInt(document.getElementById('m-target').value) || 1,
+        xpReward: parseInt(document.getElementById('m-xp').value) || 100,
+        coinReward: parseInt(document.getElementById('m-coins').value) || 0,
+      };
+
+      if (editIdx !== '') {
+        currentSeasonData.missions[editIdx] = missionObj;
+      } else {
+        currentSeasonData.missions.push(missionObj);
+      }
+      closeMissionModal();
+      renderSeasonPass();
+    }
+
+    function saveSeasonPass() {
+      if (!currentSeasonData) return;
+      currentSeasonData.seasonName = document.getElementById('sp-name').value;
+      currentSeasonData.endDate = new Date(document.getElementById('sp-end-date').value).toISOString();
+
+      fetch('/api/admin/season-pass/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentSeasonData)
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          alert('✅ Sezon ve Görevler başarıyla canlıya alındı! Uygulama açılışında anında güncellenecektir.');
+        } else {
+          alert('Hata: ' + (res.error || 'Kaydedilemedi'));
+        }
+      })
+      .catch(err => alert('Ağ hatası: ' + err.message));
+    }
+
   </script>
+
+  <!-- MODAL: GÖREV EKLE / DÜZENLE -->
+  <div id="mission-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="mission-modal-title" style="font-size:18px; font-weight:800;">🎯 Yeni Görev Ekle</h3>
+        <button class="close-btn" onclick="closeMissionModal()">&times;</button>
+      </div>
+      <form id="mission-form" onsubmit="saveMissionForm(event)">
+        <input type="hidden" id="m-id">
+        
+        <label>Görev Başlığı *</label>
+        <input type="text" id="m-title" placeholder="Örn: 90'lar Fırtınası" required>
+
+        <label>Açıklama (Kullanıcıya Görünecek Metin) *</label>
+        <input type="text" id="m-desc" placeholder="Örn: 90'lar Pop kategorisinde 5 galibiyet al" required>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Kategori / Periyot *</label>
+            <select id="m-category">
+              <option value="daily">⚡ Günlük (Daily)</option>
+              <option value="weekly">🗓️ Haftalık (Weekly)</option>
+              <option value="seasonal">🏆 Sezonluk (Seasonal)</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label>İkon (Emoji) *</label>
+            <input type="text" id="m-icon" value="🎤" required>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Tetikleyici Eylem (Action Key) *</label>
+            <select id="m-action">
+              <option value="complete_match">Düello Tamamla (complete_match)</option>
+              <option value="win_match">Düello Kazan (win_match)</option>
+              <option value="fast_answer">Hızlı Doğru Bil (&lt;3sn) (fast_answer)</option>
+              <option value="category_win">Kategori Özel Galibiyet (category_win)</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label>Hedef Sayısı *</label>
+            <input type="number" id="m-target" value="3" min="1" required>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Kazanılacak XP *</label>
+            <input type="number" id="m-xp" value="150" min="10" required>
+          </div>
+          <div style="flex:1;">
+            <label>Bonus Altın</label>
+            <input type="number" id="m-coins" value="50" min="0">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button type="button" class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="closeMissionModal()">İptal</button>
+          <button type="submit" class="btn" style="flex:1; justify-content:center;">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </body>
 </html>
