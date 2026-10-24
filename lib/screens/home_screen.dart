@@ -9,6 +9,7 @@ import '../widgets/store_dialog.dart';
 import '../widgets/collection_dialog.dart';
 import '../widgets/career_stats_dialog.dart';
 import '../widgets/banner_ad_widget.dart';
+import 'season_pass_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -140,6 +141,34 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
+
+                    // Müzik Pass Butonu
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        IconButton(
+                          icon: const Text('🎟️', style: TextStyle(fontSize: 20)),
+                          tooltip: 'Müzik Pass & Görevler',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SeasonPassScreen()),
+                          ),
+                        ),
+                        if (game.seasonPass.unclaimedRewardCount > 0 || game.seasonPass.claimableMissionCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.crimson,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
 
                     // Kariyer & İstatistik Butonu
                     IconButton(
@@ -385,6 +414,142 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 2.6 Müzik Pass (Sezon Bileti & Görevler) Canlı Şeridi
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SeasonPassScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: game.seasonPass.isGoldUnlocked
+                            ? [const Color(0xFF2C2108), const Color(0xFF18130B)]
+                            : [const Color(0xFF1E2538), const Color(0xFF131722)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: game.seasonPass.isGoldUnlocked
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF2E374E),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: game.seasonPass.isGoldUnlocked
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                              : Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Seviye Plak Rozeti
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: game.seasonPass.isGoldUnlocked
+                                  ? [const Color(0xFFFFD54F), const Color(0xFFD97706)]
+                                  : [const Color(0xFF38BDF8), const Color(0xFF1E293B)],
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              game.seasonPass.currentLevel >= 20
+                                  ? '⭐${game.seasonPass.endlessLevel}'
+                                  : '${game.seasonPass.currentLevel}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: game.seasonPass.isGoldUnlocked ? Colors.black : Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Bilgi & İlerleme Çubuğu
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    game.seasonPass.seasonName.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: game.seasonPass.isGoldUnlocked ? AppTheme.amber : Colors.white,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  if (game.seasonPass.isGoldUnlocked) ...[
+                                    const SizedBox(width: 4),
+                                    const Text('👑', style: TextStyle(fontSize: 11)),
+                                  ],
+                                  const Spacer(),
+                                  Text(
+                                    game.seasonPass.currentLevelXpText,
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: LinearProgressIndicator(
+                                  value: game.seasonPass.currentLevelProgress,
+                                  minHeight: 6,
+                                  backgroundColor: AppTheme.background,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    game.seasonPass.isGoldUnlocked ? AppTheme.amber : const Color(0xFF38BDF8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        // Ödül / Bildirim Rozeti
+                        if (game.seasonPass.unclaimedRewardCount > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.emerald,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('🎁', style: TextStyle(fontSize: 11)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${game.seasonPass.unclaimedRewardCount} AL',
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.black),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.textMuted),
                       ],
                     ),
                   ),

@@ -13,6 +13,7 @@ import '../models/duel_question.dart';
 import '../models/song.dart';
 import '../models/store_item.dart';
 import '../models/player_stats.dart';
+import '../models/season_pass_model.dart';
 import 'package:http/http.dart' as http;
 import '../services/music_api_service.dart';
 import '../services/auth_service.dart';
@@ -153,6 +154,16 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   // Kariyer & Detaylı İstatistikler
   PlayerStats _playerStats = PlayerStats();
   PlayerStats get playerStats => _playerStats;
+
+  // Sezon Bileti & Görev Sistemi (Müzik Pass)
+  SeasonPassData _seasonPass = SeasonPassData(
+    seasonId: 'season_1',
+    seasonName: "Sezon 1: 90'lar Fırtınası",
+    endDate: DateTime.now().add(const Duration(days: 28)),
+    tiers: SeasonPassData.defaultTiers,
+    missions: SeasonPassData.defaultMissions,
+  );
+  SeasonPassData get seasonPass => _seasonPass;
 
   // Uzaktan Yönetilen Mağaza Paketleri
   List<StoreItem> _storeItems = List.from(StoreItem.defaultItems);
@@ -316,6 +327,15 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         }
       }
 
+      final passJson = prefs.getString('user_season_pass_data');
+      if (passJson != null && passJson.isNotEmpty) {
+        try {
+          _seasonPass = SeasonPassData.fromJson(jsonDecode(passJson));
+        } catch (e) {
+          debugPrint('Season pass yükleme hatası: $e');
+        }
+      }
+
       _googleUserId = prefs.getString('user_google_id');
       _googleUserEmail = prefs.getString('user_google_email');
       notifyListeners();
@@ -450,6 +470,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
               _playerStats = remoteStats;
               final prefs = await SharedPreferences.getInstance();
               await prefs.setString('user_player_stats', jsonEncode(_playerStats.toJson()));
+      await prefs.setString('user_season_pass_data', jsonEncode(_seasonPass.toJson()));
               changed = true;
               debugPrint('📊 [İSTATİSTİKLER SENKRONİZE EDİLDİ] Sunucu kariyer karnesi yüklendi.');
             }
@@ -488,6 +509,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       await prefs.setString('user_player_name', _customPlayerName);
       await prefs.setString('user_player_avatar', _customAvatar);
       await prefs.setString('user_player_stats', jsonEncode(_playerStats.toJson()));
+      await prefs.setString('user_season_pass_data', jsonEncode(_seasonPass.toJson()));
       if (_googleUserId != null) await prefs.setString('user_google_id', _googleUserId!);
       if (_googleUserEmail != null) await prefs.setString('user_google_email', _googleUserEmail!);
 
@@ -617,8 +639,174 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         }
       }
     }
+
+    // Sezon Bileti XP'si & Görev Takibi
+    final earnedXp = isWinner ? 60 : (isDraw ? 35 : 20);
+    _seasonPass.currentXp += earnedXp;
+    trackMissionProgress('complete_match', amount: 1);
+    if (isWinner) {
+      trackMissionProgress('win_match', amount: 1);
+      if (_selectedCategory != null) {
+        trackMissionProgress('category_win', amount: 1, categoryId: _selectedCategory!.id);
+      }
+    }
+
     _saveUserData();
     notifyListeners();
+  }
+
+  // ==================== SEZON BİLETİ (MÜZİK PASS) İŞLEMLERİ ====================
+
+  void addSeasonPassXp(int xp) {
+    if (xp <= 0) return;
+    _seasonPass.currentXp += xp;
+    _saveUserData();
+    notifyListeners();
+  }
+
+  bool unlockGoldPass({bool useCoins = false}) {
+    if (_seasonPass.isGoldUnlocked) return true;
+    if (useCoins) {
+      if (_coins < 1500) return false;
+      _coins -= 1500;
+    }
+    _seasonPass.isGoldUnlocked = true;
+    _saveUserData();
+    notifyListeners();
+    return true;
+  }
+
+  PassReward? claimPassTierReward(int level, bool isGold) {
+    final tier = _seasonPass.tiers.firstWhere((t) => t.level == level, orElse: () => _seasonPass.tiers.first);
+    if (tier.level > _seasonPass.currentLevel) return null;
+
+    PassReward reward;
+    if (isGold) {
+      if (!_seasonPass.isGoldUnlocked || tier.isGoldClaimed) return null;
+      tier.isGoldClaimed = true;
+      reward = tier.goldReward;
+    } else {
+      if (tier.isFreeClaimed) return null;
+      tier.isFreeClaimed = true;
+      reward = tier.freeReward;
+    }
+
+    _applyReward(reward);
+    _saveUserData();
+    notifyListeners();
+    return reward;
+  }
+
+  List<PassReward> claimAllPassRewards() {
+    final List<PassReward> claimed = [];
+    final currentLvl = _seasonPass.currentLevel;
+
+    for (final tier in _seasonPass.tiers) {
+      if (tier.level <= currentLvl) {
+        if (!tier.isFreeClaimed) {
+          tier.isFreeClaimed = true;
+          _applyReward(tier.freeReward);
+          claimed.add(tier.freeReward);
+        }
+        if (_seasonPass.isGoldUnlocked && !tier.isGoldClaimed) {
+          tier.isGoldClaimed = true;
+          _applyReward(tier.goldReward);
+          claimed.add(tier.goldReward);
+        }
+      }
+    }
+
+    if (claimed.isNotEmpty) {
+      _saveUserData();
+      notifyListeners();
+    }
+    return claimed;
+  }
+
+  PassReward? openEndlessChest() {
+    final available = _seasonPass.endlessLevel - _seasonPass.endlessChestClaimCount;
+    if (available <= 0) return null;
+
+    _seasonPass.endlessChestClaimCount++;
+    const reward = PassReward(
+      type: RewardType.endlessChest,
+      amount: 500,
+      title: 'Sonsuz Plak Sandığı (+500 Altın, 2x Joker, 10 Plak, +5 Enerji)',
+      icon: '🎁',
+    );
+    _coins += 500;
+    powerUp5050Count += 2;
+    _energy = min(maxEnergy, _energy + 5);
+
+    final locked = _badges.where((b) => !b.isUnlocked).toList();
+    if (locked.isNotEmpty) {
+      final b = locked[Random().nextInt(locked.length)];
+      b.currentShards = min(b.totalShardsRequired, b.currentShards + 10);
+      if (b.currentShards >= b.totalShardsRequired) b.isUnlocked = true;
+    }
+
+    _saveUserData();
+    notifyListeners();
+    return reward;
+  }
+
+  void _applyReward(PassReward reward) {
+    switch (reward.type) {
+      case RewardType.coins:
+        _coins += reward.amount;
+        break;
+      case RewardType.energy:
+        _energy = min(maxEnergy, _energy + reward.amount);
+        break;
+      case RewardType.joker:
+        powerUp5050Count += reward.amount;
+        break;
+      case RewardType.shard:
+        final locked = _badges.where((b) => !b.isUnlocked).toList();
+        if (locked.isNotEmpty) {
+          final b = locked[Random().nextInt(locked.length)];
+          b.currentShards = min(b.totalShardsRequired, b.currentShards + reward.amount);
+          if (b.currentShards >= b.totalShardsRequired) b.isUnlocked = true;
+        }
+        break;
+      case RewardType.endlessChest:
+        _coins += reward.amount;
+        break;
+    }
+  }
+
+  void trackMissionProgress(String actionKey, {int amount = 1, String? categoryId}) {
+    bool hasChanged = false;
+    for (final mission in _seasonPass.missions) {
+      if (mission.isClaimed || mission.isCompleted) continue;
+      if (mission.actionKey == actionKey) {
+        if (mission.filterCategory != null && categoryId != null) {
+          if (!categoryId.toLowerCase().contains(mission.filterCategory!.toLowerCase())) {
+            continue;
+          }
+        }
+        mission.current = min(mission.target, mission.current + amount);
+        hasChanged = true;
+      }
+    }
+    if (hasChanged) {
+      _saveUserData();
+      notifyListeners();
+    }
+  }
+
+  bool claimMissionReward(String missionId) {
+    final mission = _seasonPass.missions.firstWhere((m) => m.id == missionId, orElse: () => _seasonPass.missions.first);
+    if (!mission.isCompleted || mission.isClaimed) return false;
+
+    mission.isClaimed = true;
+    addSeasonPassXp(mission.xpReward);
+    if (mission.coinReward > 0) {
+      _coins += mission.coinReward;
+    }
+    _saveUserData();
+    notifyListeners();
+    return true;
   }
 
   bool tryConsumeEnergy() {
@@ -1468,6 +1656,12 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       final score = (factor * 950 + 50).toInt();
       question.userScoreEarned = score;
       _userTotalScore += score;
+
+      final timeSpentMs = (_roundDurationSec * 1000) - _remainingMs;
+      if (timeSpentMs < 3000) {
+        trackMissionProgress('fast_answer', amount: 1);
+      }
+
       if (_selectedCategory != null) {
         _playerStats.recordCorrectAnswer(
           artist: question.song.artist,
