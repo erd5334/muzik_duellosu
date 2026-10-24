@@ -12,6 +12,7 @@ import '../widgets/banner_ad_widget.dart';
 import 'season_pass_screen.dart';
 import 'daily_song_screen.dart';
 import 'league_screen.dart';
+import '../widgets/party_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -818,6 +819,101 @@ class HomeScreen extends StatelessWidget {
                               fontWeight: FontWeight.w900,
                               color: game.currentLeagueTier.primaryColor,
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 2.9 Çok Kişilik Parti Modu (3 - 8 Kişi) Şeridi
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => PartyDialog.show(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2E1065), Color(0xFF1E1B4B)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFA855F7).withValues(alpha: 0.5)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFA855F7).withValues(alpha: 0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFA855F7), Color(0xFF7E22CE)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text('🎉', style: TextStyle(fontSize: 18)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Çok Kişilik Parti Modu',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFA855F7),
+                                      borderRadius: BorderRadius.all(Radius.circular(6)),
+                                    ),
+                                    child: const Text(
+                                      '3 - 8 KİŞİ',
+                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Arkadaşlarınla oda kur veya PIN ile bağlan!',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFFD8B4FE),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFA855F7), Color(0xFF9333EA)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'Oda Aç 🎉',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white),
                           ),
                         ),
                       ],

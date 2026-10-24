@@ -120,14 +120,17 @@ class ArenaScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        _buildPlayerBadge(
-                          name: opponent?.name ?? 'Rakip',
-                          avatar: opponent?.avatar ?? '🎸',
-                          score: game.opponentTotalScore,
-                          isLeft: false,
-                          statusText: oppStatus,
-                          statusColor: oppStatusColor,
-                        ),
+                        if (game.isPartyMode)
+                          _buildPartyHeaderWidget(game)
+                        else
+                          _buildPlayerBadge(
+                            name: opponent?.name ?? 'Rakip',
+                            avatar: opponent?.avatar ?? '🎸',
+                            score: game.opponentTotalScore,
+                            isLeft: false,
+                            statusText: oppStatus,
+                            statusColor: oppStatusColor,
+                          ),
                       ],
                     ),
                   ),
@@ -366,10 +369,31 @@ class ArenaScreen extends StatelessWidget {
     final isCorrect = question.correctOptionIndex == index;
     final showResult = question.isAnswered || game.status == GameStatus.roundResult;
 
-    // Rakibin seçimi göstergesi — YALNIZCA oyuncu kendi cevabını verdikten sonra (showResult) gösterilir!
-    // Böylece oyuncu rakibin şıkkına bakıp kopya çekemez.
+    // Rakip / Parti oyuncuları seçimi göstergesi — YALNIZCA oyuncu kendi cevabını verdikten sonra (showResult) gösterilir!
     Widget? opponentBadge;
-    if (showResult && question.opponentHasAnswered && question.opponentSelectedOptionIndex == index) {
+    if (game.isPartyMode && showResult) {
+      final pickers = game.partyPlayers.where((p) => p.selectedOptionIndex == index).toList();
+      if (pickers.isNotEmpty) {
+        final color = isCorrect ? AppTheme.emerald : AppTheme.crimson;
+        opponentBadge = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.6)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: pickers.take(3).map((p) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                child: _buildMiniAvatar(p.avatar),
+              );
+            }).toList(),
+          ),
+        );
+      }
+    } else if (showResult && question.opponentHasAnswered && question.opponentSelectedOptionIndex == index) {
       final oppAvatar = game.opponent?.avatar ?? '🎸';
       final isOppCorrect = question.isOpponentCorrect == true || index == question.correctOptionIndex;
       final color = isOppCorrect ? AppTheme.emerald : AppTheme.crimson;
@@ -404,6 +428,59 @@ class ArenaScreen extends StatelessWidget {
       showResult: showResult,
       opponentBadge: opponentBadge,
       onTap: () => game.answerQuestion(index),
+    );
+  }
+
+  Widget _buildPartyHeaderWidget(GameProvider game) {
+    final otherPlayers = game.partyPlayers.where((p) => p.name != game.playerName).toList();
+    if (otherPlayers.isEmpty) {
+      return const SizedBox(width: 40);
+    }
+    return SizedBox(
+      height: 38,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: otherPlayers.take(4).map((p) {
+          return Padding(
+            padding: const EdgeInsets.only(left: 4.0),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: AppTheme.surfaceLight,
+                  child: p.avatar.startsWith('http')
+                      ? ClipOval(
+                          child: Image.network(
+                            p.avatar,
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const Text('🎧', style: TextStyle(fontSize: 12)),
+                          ),
+                        )
+                      : Text(p.avatar, style: const TextStyle(fontSize: 12)),
+                ),
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: p.hasAnswered ? AppTheme.emerald : AppTheme.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.background, width: 1),
+                    ),
+                    child: p.hasAnswered
+                        ? const Icon(Icons.check, size: 8, color: Colors.white)
+                        : const SizedBox(width: 4, height: 4),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 

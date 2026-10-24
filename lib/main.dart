@@ -8,6 +8,8 @@ import 'screens/home_screen.dart';
 import 'screens/matchmaking_screen.dart';
 import 'screens/arena_screen.dart';
 import 'screens/match_result_screen.dart';
+import 'screens/party_lobby_screen.dart';
+import 'screens/party_podium_screen.dart';
 
 import 'services/ad_service.dart';
 
@@ -71,6 +73,12 @@ class MainNavigator extends StatelessWidget {
     final game = context.watch<GameProvider>();
 
     switch (game.status) {
+      case GameStatus.partyLobby:
+        return const PartyLobbyScreen();
+
+      case GameStatus.partyPodium:
+        return const PartyPodiumScreen();
+
       case GameStatus.searchingOpponent:
       case GameStatus.waitingFriendInRoom:
       case GameStatus.opponentFound:

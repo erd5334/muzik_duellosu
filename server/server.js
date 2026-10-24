@@ -1680,6 +1680,326 @@ class DuelRoom {
   }
 }
 
+
+// ==================== 👥 ÇOK KİŞİLİK PARTİ MODU (3 - 8 KİŞİ) ====================
+class PartyRoom {
+  constructor({ id, code, host, settings }) {
+    this.id = id;
+    this.code = code;
+    this.host = host;
+    this.settings = settings;
+    this.players = [host];
+    this.questions = [];
+    this.currentRound = 0;
+    this.timer = null;
+    this.isFinished = false;
+    this.status = 'lobby'; // 'lobby' | 'playing' | 'round_result' | 'finished'
+    this.roundAnswerCount = 0;
+
+    host.partyRoom = this;
+    host.totalScore = 0;
+    host.correctCount = 0;
+    host.totalTimeMs = 0;
+  }
+
+  broadcast(message, excludePlayerId = null) {
+    for (const p of this.players) {
+      if (!excludePlayerId || p.id !== excludePlayerId) {
+        p.send(message);
+      }
+    }
+  }
+
+  getPlayersData() {
+    return this.players.map((p, idx) => ({
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar,
+      score: p.totalScore || 0,
+      isHost: p.id === this.host.id,
+      hasAnswered: !!p.currentRoundAnswered,
+      isCorrect: p.roundIsCorrect,
+      timeSpentMs: p.roundTimeSpentMs || 0,
+      rank: idx + 1,
+    }));
+  }
+
+  addPlayer(player) {
+    if (this.status !== 'lobby') {
+      player.send({ type: 'error_message', message: 'Bu parti oyunu zaten başladı!' });
+      return false;
+    }
+    if (this.players.length >= 8) {
+      player.send({ type: 'error_message', message: 'Parti odası dolu! (Maksimum 8 oyuncu)' });
+      return false;
+    }
+    if (!this.players.some(p => p.id === player.id)) {
+      player.partyRoom = this;
+      player.totalScore = 0;
+      player.correctCount = 0;
+      player.totalTimeMs = 0;
+      player.currentRoundAnswered = false;
+      this.players.push(player);
+    }
+
+    console.log(`🎉 [PARTİ ODA #${this.code}] ${player.name} odaya katıldı. Toplam: ${this.players.length}/8`);
+
+    this.broadcast({
+      type: 'party_lobby_update',
+      roomCode: this.code,
+      hostId: this.host.id,
+      settings: this.settings,
+      players: this.getPlayersData(),
+    });
+    return true;
+  }
+
+  removePlayer(player) {
+    const idx = this.players.findIndex(p => p.id === player.id);
+    if (idx !== -1) {
+      this.players.splice(idx, 1);
+      player.partyRoom = null;
+      console.log(`👋 [PARTİ ODA #${this.code}] ${player.name} ayrıldı.`);
+    }
+
+    if (this.players.length === 0) {
+      console.log(`🗑️ [PARTİ ODA #${this.code}] Odada kimse kalmadı, oda silindi.`);
+      if (this.timer) clearTimeout(this.timer);
+      delete partyRooms[this.code];
+      return;
+    }
+
+    if (this.host.id === player.id) {
+      this.host = this.players[0];
+      console.log(`👑 [PARTİ ODA #${this.code}] Yeni Host: ${this.host.name}`);
+    }
+
+    this.broadcast({
+      type: 'party_lobby_update',
+      roomCode: this.code,
+      hostId: this.host.id,
+      settings: this.settings,
+      players: this.getPlayersData(),
+      message: `${player.name} odadan ayrıldı.`,
+    });
+
+    if (this.status === 'playing') {
+      const allAnswered = this.players.every(p => p.currentRoundAnswered);
+      if (allAnswered) {
+        clearTimeout(this.timer);
+        setTimeout(() => this.endRound(), 800);
+      }
+    }
+  }
+
+  async start() {
+    if (this.players.length < 2) {
+      this.host.send({ type: 'error_message', message: 'Parti oyununu başlatmak için en az 2 oyuncu gereklidir!' });
+      return;
+    }
+
+    this.status = 'playing';
+    console.log(`🚀 [PARTİ ODA #${this.code}] Oyun Başladı! ${this.players.length} Oyuncu, ${this.settings.roundCount} Tur.`);
+
+    this.questions = await prepareQuestions(this.settings.category, this.settings.roundCount || 5);
+    const preloadUrls = this.questions.map(q => q.previewUrl).filter(Boolean);
+
+    this.broadcast({
+      type: 'party_game_started',
+      roomCode: this.code,
+      totalRounds: this.questions.length,
+      settings: this.settings,
+      preloadUrls,
+      players: this.getPlayersData(),
+    });
+
+    setTimeout(() => this.startRound(0), 2500);
+  }
+
+  startRound(roundIndex) {
+    if (this.isFinished || !this.questions || !this.questions[roundIndex]) return;
+    this.currentRound = roundIndex;
+    this.roundAnswerCount = 0;
+
+    for (const p of this.players) {
+      p.currentRoundAnswered = false;
+      p.selectedOptionIndex = -1;
+      p.roundTimeSpentMs = 0;
+      p.roundIsCorrect = false;
+      p.roundScoreEarned = 0;
+    }
+
+    const q = this.questions[roundIndex];
+    const durationMs = (this.settings.roundDurationSec || 10) * 1000;
+    const nextPreviewUrl = (this.questions && this.questions[roundIndex + 1]) ? this.questions[roundIndex + 1].previewUrl : null;
+
+    const payload = {
+      type: 'party_round_start',
+      roundIndex,
+      totalRounds: this.questions.length,
+      roundDurationSec: this.settings.roundDurationSec || 10,
+      nextPreviewUrl,
+      question: {
+        title: q.title,
+        artist: q.artist,
+        previewUrl: q.previewUrl,
+        artworkUrl: q.artworkUrl,
+        promptText: q.promptText,
+        options: q.options,
+        correctIndex: q.correctIndex,
+      },
+      players: this.getPlayersData(),
+    };
+
+    this.broadcast(payload);
+
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.endRound(), durationMs + 800);
+  }
+
+  handleAnswer(player, optionIndex, remainingMs) {
+    if (player.currentRoundAnswered || this.status !== 'playing' || this.isFinished) return;
+    player.currentRoundAnswered = true;
+    player.selectedOptionIndex = optionIndex;
+
+    const q = this.questions[this.currentRound];
+    const isCorrect = optionIndex === q.correctIndex;
+    const maxMs = (this.settings.roundDurationSec || 10) * 1000;
+    const timeSpentMs = Math.max(100, Math.min(maxMs, maxMs - remainingMs));
+    player.roundTimeSpentMs = timeSpentMs;
+    player.totalTimeMs = (player.totalTimeMs || 0) + timeSpentMs;
+    player.roundIsCorrect = isCorrect;
+
+    let score = 0;
+    if (isCorrect) {
+      this.roundAnswerCount++;
+      player.correctCount = (player.correctCount || 0) + 1;
+      const speedFactor = Math.min(1.0, Math.max(0.05, remainingMs / maxMs));
+      const orderBonus = this.roundAnswerCount === 1 ? 100 : (this.roundAnswerCount === 2 ? 50 : 0);
+      score = Math.floor(speedFactor * 900 + 100 + orderBonus);
+    }
+    player.roundScoreEarned = score;
+    player.totalScore = (player.totalScore || 0) + score;
+
+    player.send({
+      type: 'party_answer_result',
+      isCorrect,
+      correctIndex: q.correctIndex,
+      earnedScore: score,
+      yourTotalScore: player.totalScore,
+      timeSpentMs,
+    });
+
+    this.broadcast({
+      type: 'party_player_answered',
+      playerId: player.id,
+      playerName: player.name,
+      avatar: player.avatar,
+      hasAnswered: true,
+      answeredCount: this.players.filter(p => p.currentRoundAnswered).length,
+      totalPlayers: this.players.length,
+    });
+
+    const allAnswered = this.players.every(p => p.currentRoundAnswered);
+    if (allAnswered) {
+      clearTimeout(this.timer);
+      setTimeout(() => this.endRound(), 1200);
+    }
+  }
+
+  endRound() {
+    if (this.status !== 'playing' || this.isFinished) return;
+    clearTimeout(this.timer);
+    this.status = 'round_result';
+
+    const q = this.questions[this.currentRound];
+    const sortedPlayers = [...this.players].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+    const rankings = sortedPlayers.map((p, idx) => ({
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar,
+      score: p.totalScore || 0,
+      roundScore: p.roundScoreEarned || 0,
+      isCorrect: p.roundIsCorrect || false,
+      selectedOptionIndex: p.selectedOptionIndex,
+      timeSpentMs: p.roundTimeSpentMs || 0,
+      rank: idx + 1,
+    }));
+
+    const endPayload = {
+      type: 'party_round_end',
+      roundIndex: this.currentRound,
+      correctIndex: q.correctIndex,
+      songTitle: q.title,
+      artist: q.artist,
+      artworkUrl: q.artworkUrl,
+      rankings,
+    };
+
+    this.broadcast(endPayload);
+
+    setTimeout(() => {
+      if (this.currentRound + 1 < this.questions.length) {
+        this.status = 'playing';
+        this.startRound(this.currentRound + 1);
+      } else {
+        this.finishGame();
+      }
+    }, 4000);
+  }
+
+  finishGame() {
+    if (this.isFinished) return;
+    this.isFinished = true;
+    this.status = 'finished';
+    clearTimeout(this.timer);
+
+    const sortedPlayers = [...this.players].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+    const podium = sortedPlayers.slice(0, 3).map((p, idx) => ({
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar,
+      score: p.totalScore || 0,
+      correctCount: p.correctCount || 0,
+      averageTimeSec: (p.totalTimeMs ? (p.totalTimeMs / this.questions.length / 1000) : 0).toFixed(1),
+      rank: idx + 1,
+    }));
+
+    const fullRankings = sortedPlayers.map((p, idx) => ({
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar,
+      score: p.totalScore || 0,
+      correctCount: p.correctCount || 0,
+      averageTimeSec: (p.totalTimeMs ? (p.totalTimeMs / this.questions.length / 1000) : 0).toFixed(1),
+      rank: idx + 1,
+    }));
+
+    this.broadcast({
+      type: 'party_game_over',
+      podium,
+      rankings: fullRankings,
+      songs: this.questions.map(q => ({
+        title: q.title,
+        artist: q.artist,
+        artworkUrl: q.artworkUrl,
+      })),
+    });
+
+    console.log(`🏆 [PARTİ ODA #${this.code}] Parti Tamamlandı! Kazanan: ${podium[0] ? podium[0].name : 'Yok'}`);
+  }
+}
+
+const partyRooms = {};
+
+function generatePartyCode() {
+  let code;
+  do {
+    code = Math.floor(1000 + Math.random() * 9000).toString();
+  } while (partyRooms[code] || customRooms[code]);
+  return code;
+}
+
 const publicQueues = {};
 const customRooms = {};
 const activeRooms = new Map();
@@ -1890,6 +2210,58 @@ wss.on('connection', (ws) => {
         activeRooms.set(host.id, room);
         activeRooms.set(player.id, room);
         room.start();
+            } else if (type === 'create_party_room') {
+        const code = generatePartyCode();
+        player.name = data.playerName || 'Parti Kurucusu';
+        player.avatar = data.avatar || '👑';
+        player.platform = data.platform || 'Mobil';
+        player.totalScore = 0;
+
+        const roundCount = [5, 7, 10].includes(data.roundCount) ? data.roundCount : 5;
+        const roundDurationSec = [7, 10, 15].includes(data.durationSec) ? data.durationSec : 10;
+        const category = data.category || 'pop_90s';
+
+        const room = new PartyRoom({
+          id: 'party_' + code + '_' + Date.now(),
+          code,
+          host: player,
+          settings: { roundCount, roundDurationSec, category },
+        });
+
+        partyRooms[code] = room;
+        player.send({
+          type: 'party_room_created',
+          roomCode: code,
+          hostId: player.id,
+          settings: room.settings,
+          players: room.getPlayersData(),
+        });
+        console.log(`🎉 [YENİ PARTİ ODASI] #${code} | Kurucu: ${player.name} | ${roundCount} Tur | ${category}`);
+      } else if (type === 'join_party_room') {
+        const code = (data.roomCode || '').trim();
+        const room = partyRooms[code];
+        if (!room) {
+          player.send({ type: 'error_message', message: `Böyle bir parti odası bulunamadı: #${code}` });
+          return;
+        }
+        player.name = data.playerName || 'Misafir';
+        player.avatar = data.avatar || '🎧';
+        player.platform = data.platform || 'Mobil';
+        room.addPlayer(player);
+      } else if (type === 'start_party_game') {
+        if (player.partyRoom && player.partyRoom.host.id === player.id) {
+          player.partyRoom.start();
+        } else {
+          player.send({ type: 'error_message', message: 'Yalnızca oda kurucusu oyunu başlatabilir!' });
+        }
+      } else if (type === 'submit_party_answer') {
+        if (player.partyRoom) {
+          player.partyRoom.handleAnswer(player, data.optionIndex, data.timeRemainingMs);
+        }
+      } else if (type === 'leave_party_room') {
+        if (player.partyRoom) {
+          player.partyRoom.removePlayer(player);
+        }
       } else if (type === 'ping') {
         player.send({ type: 'pong' });
       } else if (type === 'submit_answer' && player.room) {
@@ -1918,6 +2290,9 @@ wss.on('connection', (ws) => {
           }
         }, 120000);
       }
+    }
+    if (player.partyRoom) {
+      player.partyRoom.removePlayer(player);
     }
     if (player.room) {
       player.room.handleDisconnect(player);

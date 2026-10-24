@@ -16,6 +16,7 @@ import '../models/player_stats.dart';
 import '../models/season_pass_model.dart';
 import '../models/daily_song_model.dart';
 import '../models/league_model.dart';
+import '../models/party_room.dart';
 import 'package:http/http.dart' as http;
 import '../services/music_api_service.dart';
 import '../services/auth_service.dart';
@@ -30,6 +31,8 @@ enum GameStatus {
   playing,
   roundResult,
   matchOver,
+  partyLobby, // 👥 Çok Kişilik Parti Lobisi
+  partyPodium, // 🏆 Parti Sonu Podyum Ekranı
   error,
 }
 
@@ -140,6 +143,18 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   String? get createdRoomCode => _createdRoomCode;
   bool _isCustomRoom = false;
   bool get isCustomRoom => _isCustomRoom;
+
+  // Çok Kişilik Parti Modu (Party Mode)
+  PartyRoomData? _partyRoom;
+  PartyRoomData? get partyRoom => _partyRoom;
+  bool _isPartyMode = false;
+  bool get isPartyMode => _isPartyMode;
+  List<PartyPlayer> get partyPlayers => _partyRoom?.players ?? [];
+  bool get isPartyHost =>
+      _partyRoom != null &&
+      (_partyRoom!.hostId == _googleUserId ||
+          _partyRoom!.hostId == 'local_user' ||
+          (_partyRoom!.players.isNotEmpty && _partyRoom!.players.first.isHost));
 
   // Profil
   String _customPlayerName = kIsWeb ? 'Web Oyuncusu' : 'MuMu Android';
@@ -1535,6 +1550,107 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// 👥 Çok Kişilik Parti Odası Kurma (3 - 8 Kişi)
+  Future<void> createPartyRoom({
+    required MusicCategory category,
+    int roundCount = 5,
+    int durationSec = 10,
+  }) async {
+    _status = GameStatus.partyLobby;
+    _isPartyMode = true;
+    _isMultiplayer = true;
+    _selectedCategory = category;
+    _totalMatchRounds = roundCount;
+    _roundDurationSec = durationSec;
+    _questions = [];
+    _currentQuestion = null;
+    _userTotalScore = 0;
+    _partyRoom = null;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _connectAndListen();
+      _wsChannel?.sink.add(jsonEncode({
+        'type': 'create_party_room',
+        'playerName': playerName,
+        'avatar': playerAvatar,
+        'googleId': _googleUserId,
+        'category': category.id,
+        'roundCount': roundCount,
+        'durationSec': durationSec,
+      }));
+    } catch (e) {
+      _status = GameStatus.error;
+      _errorMessage = 'Parti odası kurulamadı: $e';
+      notifyListeners();
+    }
+  }
+
+  /// 👥 Çok Kişilik Parti Odasına PIN ile Katılma (3 - 8 Kişi)
+  Future<void> joinPartyRoom(String roomCode) async {
+    _status = GameStatus.partyLobby;
+    _isPartyMode = true;
+    _isMultiplayer = true;
+    _questions = [];
+    _currentQuestion = null;
+    _userTotalScore = 0;
+    _partyRoom = null;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _connectAndListen();
+      _wsChannel?.sink.add(jsonEncode({
+        'type': 'join_party_room',
+        'roomCode': roomCode.trim(),
+        'playerName': playerName,
+        'avatar': playerAvatar,
+        'googleId': _googleUserId,
+      }));
+    } catch (e) {
+      _status = GameStatus.error;
+      _errorMessage = 'Parti odasına bağlanılamadı: $e';
+      notifyListeners();
+    }
+  }
+
+  void startPartyGame() {
+    if (_wsChannel != null && _isPartyMode) {
+      _wsChannel?.sink.add(jsonEncode({
+        'type': 'start_party_game',
+      }));
+    }
+  }
+
+  void leavePartyRoom() {
+    if (_wsChannel != null && _isPartyMode) {
+      _wsChannel?.sink.add(jsonEncode({
+        'type': 'leave_party_room',
+      }));
+    }
+    resetToHome();
+  }
+
+  void submitPartyAnswer(int optionIndex) {
+    final question = _currentQuestion;
+    if (question == null || question.isAnswered || _status != GameStatus.playing) return;
+
+    question.isAnswered = true;
+    question.selectedOptionIndex = optionIndex;
+    final timeSpentMs = (_roundDurationSec * 1000) - _remainingMs;
+    question.userAnswerTimeMs = timeSpentMs;
+    notifyListeners();
+
+    if (_wsChannel != null) {
+      _wsChannel?.sink.add(jsonEncode({
+        'type': 'submit_party_answer',
+        'optionIndex': optionIndex,
+        'timeRemainingMs': _remainingMs,
+      }));
+    }
+  }
+
   Future<void> _connectAndListen() async {
     await _disconnectWebSocket();
     final uri = Uri.parse(_serverWsUrl);
@@ -1721,6 +1837,126 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
           notifyListeners();
           break;
 
+        case 'party_room_created':
+        case 'party_lobby_update':
+          _partyRoom = PartyRoomData.fromJson(data);
+          _status = GameStatus.partyLobby;
+          _isPartyMode = true;
+          _isMultiplayer = true;
+          notifyListeners();
+          break;
+
+        case 'party_game_started':
+          _partyRoom = PartyRoomData.fromJson(data);
+          _totalMatchRounds = data['totalRounds'] as int? ?? _totalMatchRounds;
+          final urls = (data['preloadUrls'] as List<dynamic>? ?? []).cast<String>();
+          for (final url in urls) {
+            if (url.isNotEmpty) preloadSong(url);
+          }
+          _status = GameStatus.opponentFound;
+          notifyListeners();
+          break;
+
+        case 'party_round_start':
+          final roundIdx = data['roundIndex'] as int;
+          final qData = data['question'] as Map<String, dynamic>;
+          final duelQuestion = DuelQuestion(
+            song: Song(
+              id: 'q_$roundIdx',
+              title: qData['title'] ?? 'Bilinmeyen Şarkı',
+              artist: qData['artist'] ?? 'Bilinmeyen Sanatçı',
+              album: 'Parti Modu',
+              previewUrl: qData['previewUrl'] ?? '',
+              artworkUrl: qData['artworkUrl'] ?? '',
+              categoryId: _selectedCategory?.id ?? 'pop_90s',
+            ),
+            type: QuestionType.songTitle,
+            options: List<String>.from(qData['options']),
+            correctOptionIndex: qData['correctIndex'] as int? ?? -1,
+            customPrompt: qData['promptText'] as String?,
+          );
+
+          if (data['nextPreviewUrl'] != null) {
+            preloadSong(data['nextPreviewUrl'] as String);
+          }
+
+          _currentRoundIndex = roundIdx;
+          _currentQuestion = duelQuestion;
+          _questions.add(duelQuestion);
+
+          if (data['players'] != null && _partyRoom != null) {
+            final pList = (data['players'] as List<dynamic>)
+                .map((p) => PartyPlayer.fromJson(p as Map<String, dynamic>))
+                .toList();
+            _partyRoom!.players = pList;
+          }
+
+          _startLiveRound(duelQuestion);
+          break;
+
+        case 'party_answer_result':
+          final correctIdx = data['correctIndex'] as int;
+          final earned = data['earnedScore'] as int;
+          final total = data['yourTotalScore'] as int;
+          if (_currentQuestion != null) {
+            _currentQuestion!.correctOptionIndex = correctIdx;
+            _currentQuestion!.userScoreEarned = earned;
+            _userTotalScore = total;
+          }
+          notifyListeners();
+          break;
+
+        case 'party_player_answered':
+          final playerId = data['playerId'] as String?;
+          if (_partyRoom != null && playerId != null) {
+            for (final p in _partyRoom!.players) {
+              if (p.id == playerId) {
+                p.hasAnswered = true;
+                break;
+              }
+            }
+          }
+          notifyListeners();
+          break;
+
+        case 'party_round_end':
+          final correctIdx = data['correctIndex'] as int;
+          _countdownTimer?.cancel();
+          await _audioPlayer.stop();
+
+          if (_currentQuestion != null) {
+            _currentQuestion!.correctOptionIndex = correctIdx;
+            _currentQuestion!.isAnswered = true;
+          }
+
+          if (data['rankings'] != null && _partyRoom != null) {
+            final rankings = (data['rankings'] as List<dynamic>)
+                .map((p) => PartyPlayer.fromJson(p as Map<String, dynamic>))
+                .toList();
+            _partyRoom!.players = rankings;
+          }
+
+          _status = GameStatus.roundResult;
+          notifyListeners();
+          break;
+
+        case 'party_game_over':
+          _countdownTimer?.cancel();
+          await _audioPlayer.stop();
+          if (_partyRoom != null) {
+            final podium = (data['podium'] as List<dynamic>? ?? [])
+                .map((p) => PartyPodiumPlayer.fromJson(p as Map<String, dynamic>))
+                .toList();
+            final rankings = (data['rankings'] as List<dynamic>? ?? [])
+                .map((p) => PartyPlayer.fromJson(p as Map<String, dynamic>))
+                .toList();
+            _partyRoom!.podium = podium;
+            _partyRoom!.finalRankings = rankings;
+          }
+          _status = GameStatus.partyPodium;
+          notifyListeners();
+          break;
+
         case 'error_message':
         case 'opponent_disconnected':
           _errorMessage = data['message'] as String? ?? 'Bağlantı kesildi.';
@@ -1798,6 +2034,10 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void answerQuestion(int optionIndex) async {
+    if (_isPartyMode) {
+      submitPartyAnswer(optionIndex);
+      return;
+    }
     final question = _currentQuestion;
     if (question == null || question.isAnswered || _status != GameStatus.playing) return;
 
@@ -2187,6 +2427,8 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     _opponentTotalScore = 0;
     _createdRoomCode = null;
     _isCustomRoom = false;
+    _partyRoom = null;
+    _isPartyMode = false;
     notifyListeners();
   }
 
