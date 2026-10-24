@@ -21,9 +21,8 @@ class _DailySongScreenState extends State<DailySongScreen> {
 
   bool _isPlaying = false;
   Duration _currentPosition = Duration.zero;
-    StreamSubscription? _posSub;
+  StreamSubscription? _posSub;
   StreamSubscription? _stateSub;
-  Timer? _stopTimer;
 
   List<String> _filteredSuggestions = [];
   bool _showSuggestions = false;
@@ -35,6 +34,14 @@ class _DailySongScreenState extends State<DailySongScreen> {
   }
 
   void _initAudio() {
+    try {
+      final audioContext = AudioContextConfig(
+        respectSilence: false,
+        route: AudioContextConfigRoute.speaker,
+      ).build();
+      _player.setAudioContext(audioContext);
+    } catch (_) {}
+
     _posSub = _player.onPositionChanged.listen((pos) {
       if (!mounted) return;
       setState(() {
@@ -43,11 +50,10 @@ class _DailySongScreenState extends State<DailySongScreen> {
 
       final game = context.read<GameProvider>();
       final progress = game.dailySongProgress;
-      if (progress != null && !progress.isCompleted) {
-        final maxSec = progress.unlockedSeconds;
-        if (pos.inMilliseconds >= (maxSec * 1000).toInt()) {
-          _player.pause();
-          _stopTimer?.cancel();
+      if (progress != null) {
+        final limitSec = (progress.isCompleted && progress.isWon) ? 30.0 : progress.unlockedSeconds;
+        if (pos.inMilliseconds >= (limitSec * 1000).toInt()) {
+          _player.stop();
           setState(() {
             _isPlaying = false;
             _currentPosition = Duration.zero;
@@ -60,13 +66,15 @@ class _DailySongScreenState extends State<DailySongScreen> {
       if (!mounted) return;
       setState(() {
         _isPlaying = state == PlayerState.playing;
+        if (state == PlayerState.completed || state == PlayerState.stopped) {
+          _currentPosition = Duration.zero;
+        }
       });
     });
   }
 
   @override
   void dispose() {
-    _stopTimer?.cancel();
     _posSub?.cancel();
     _stateSub?.cancel();
     _player.dispose();
@@ -81,32 +89,28 @@ class _DailySongScreenState extends State<DailySongScreen> {
     if (data == null || progress == null) return;
 
     if (_isPlaying) {
-      await _player.pause();
-      _stopTimer?.cancel();
+      await _player.stop();
       setState(() {
         _isPlaying = false;
+        _currentPosition = Duration.zero;
       });
     } else {
       final previewUrl = data.song.previewUrl;
       if (previewUrl.isEmpty) return;
 
-      final limitSec = progress.isCompleted && progress.isWon ? 30.0 : progress.unlockedSeconds;
-      await _player.stop();
-      await _player.play(UrlSource(previewUrl));
-
-      _stopTimer?.cancel();
-      _stopTimer = Timer(Duration(milliseconds: (limitSec * 1000).toInt()), () async {
-        if (!mounted) return;
-        await _player.pause();
+      try {
+        await _player.stop();
+        await _player.seek(Duration.zero);
+        await _player.play(UrlSource(previewUrl));
+        setState(() {
+          _isPlaying = true;
+        });
+      } catch (e) {
+        debugPrint('Daily song audio play error: $e');
         setState(() {
           _isPlaying = false;
-          _currentPosition = Duration.zero;
         });
-      });
-
-      setState(() {
-        _isPlaying = true;
-      });
+      }
     }
   }
 

@@ -239,22 +239,61 @@ const CURATED_DAILY_SONGS = [
   { artist: 'Haluk Levent', title: 'Elfida', artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/e0/75/4a/e0754a1d-a3df-a6df-16fc-0c2ef3a778c1/cover.jpg/600x600bb.jpg', previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/7e/6b/6b/7e6b6b77-d3c5-bc9a-b44c-c376174a7b54/mzaf_13506169527712398501.plus.aac.p.m4a' }
 ];
 
-function getDailySongForDate(dateStr) {
+const DAILY_SONG_CACHE = {};
+
+function fetchLiveItunes(artist, title) {
+  return new Promise((resolve) => {
+    const q = encodeURIComponent(artist + ' ' + title);
+    https.get('https://itunes.apple.com/search?term=' + q + '&country=tr&media=music&entity=song&limit=1', (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          if (j.results && j.results.length > 0) {
+            resolve({
+              previewUrl: j.results[0].previewUrl,
+              artworkUrl: j.results[0].artworkUrl100 ? j.results[0].artworkUrl100.replace('100x100bb', '600x600bb') : null
+            });
+          } else {
+            resolve(null);
+          }
+        } catch (_) { resolve(null); }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+async function getDailySongForDate(dateStr) {
+  if (DAILY_SONG_CACHE[dateStr]) {
+    return DAILY_SONG_CACHE[dateStr];
+  }
+
   let hash = 0;
   for (let i = 0; i < dateStr.length; i++) {
     hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
     hash |= 0;
   }
   const index = Math.abs(hash) % CURATED_DAILY_SONGS.length;
-  const song = CURATED_DAILY_SONGS[index];
-  const searchPool = CURATED_DAILY_SONGS.map(s => `${s.artist} - ${s.title}`);
+  const song = { ...CURATED_DAILY_SONGS[index] };
+  const searchPool = CURATED_DAILY_SONGS.map(s => s.artist + ' - ' + s.title);
 
-  return {
+  try {
+    const live = await fetchLiveItunes(song.artist, song.title);
+    if (live && live.previewUrl) {
+      song.previewUrl = live.previewUrl;
+      if (live.artworkUrl) song.artworkUrl = live.artworkUrl;
+    }
+  } catch (_) {}
+
+  const result = {
     date: dateStr,
     dayNumber: Math.abs(hash) % 1000 + 1,
     song: song,
     searchPool: searchPool
   };
+  DAILY_SONG_CACHE[dateStr] = result;
+  return result;
 }
 
 const LEGACY_BADGE_MAP = {
@@ -459,7 +498,8 @@ const server = http.createServer(async (req, res) => {
     const urlObj = new URL(req.url, 'http://localhost');
     const dateStr = urlObj.searchParams.get('date') || new Date().toISOString().slice(0, 10);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(getDailySongForDate(dateStr)));
+    const dailyData = await getDailySongForDate(dateStr);
+    res.end(JSON.stringify(dailyData));
     return;
   }
 
