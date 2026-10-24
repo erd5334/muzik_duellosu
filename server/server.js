@@ -472,6 +472,105 @@ function fetchDeezerArtistImage(name) {
   });
 }
 
+
+// ==================== HAFTALIK LİGLER & KÜME SİSTEMİ ====================
+const BOT_NAMES = [
+  'Melisa', 'Baran_99', 'Ece Rocker', 'Kaan M.', 'Melike_Pop', 'Caner 90s', 'Zeynep_K',
+  'Burak TR', 'Ahmet_06', 'Selin Hits', 'Emre Rap', 'Buse_D', 'Oğuzhan', 'Gamze_Y',
+  'Mert Can', 'Ezgi_Rock', 'Tolga', 'İrem_S', 'Murat_88', 'Gizem_A', 'Serkan', 'Duygu',
+  'Alperen', 'Hilal', 'Onur_Pop'
+];
+const BOT_AVATARS = ['🎧', '🎸', '🎤', '🎹', '🎷', '🥁', '🎺', '🎻', '🎙️', '💿'];
+
+function getTierForTrophies(trophies) {
+  if (trophies >= 2800) return 'legends';
+  if (trophies >= 1600) return 'diamond';
+  if (trophies >= 800) return 'gold';
+  if (trophies >= 300) return 'silver';
+  return 'bronze';
+}
+
+function getNextSundayDate() {
+  const now = new Date();
+  const day = now.getDay(); // 0 is Sunday
+  const daysUntilSunday = day === 0 ? 7 : (7 - day);
+  const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59);
+  return sunday.toISOString();
+}
+
+function generateLeagueLeaderboard(userId, userTrophies, userName, userAvatar) {
+  const trophies = Math.max(0, parseInt(userTrophies) || 120);
+  const tier = getTierForTrophies(trophies);
+  const endsAt = getNextSundayDate();
+
+  // Tier base trophy ranges
+  const tierBases = {
+    bronze: [50, 290],
+    silver: [300, 780],
+    gold: [800, 1580],
+    diamond: [1600, 2780],
+    legends: [2800, 5200]
+  };
+  const [minT, maxT] = tierBases[tier] || [50, 300];
+
+  const now = new Date();
+  const weekNumber = Math.ceil((now.getDate() + 6 - now.getDay()) / 7) || 1;
+
+  // Deterministik bot listesi
+  const players = [];
+  const baseSeed = weekNumber * 1000 + (tier.charCodeAt(0) * 10);
+
+  for (let i = 0; i < 24; i++) {
+    const pseudoRandom = ((baseSeed + (i * 37)) % 100) / 100.0;
+    const botTrophies = Math.round(minT + pseudoRandom * (maxT - minT));
+    players.push({
+      id: 'bot_' + i,
+      name: BOT_NAMES[i % BOT_NAMES.length],
+      avatar: BOT_AVATARS[i % BOT_AVATARS.length],
+      trophies: botTrophies,
+      badgeTitle: tier === 'legends' ? 'Şampiyon' : (tier === 'diamond' ? 'Müzik Dehası' : 'Yarışmacı'),
+      isCurrentUser: false
+    });
+  }
+
+  // Kullanıcıyı ekle
+  players.push({
+    id: userId || 'current_user',
+    name: userName || 'Ben',
+    avatar: userAvatar || '🎧',
+    trophies: trophies,
+    badgeTitle: 'Yarışmacı',
+    isCurrentUser: true
+  });
+
+  // Sırala
+  players.sort((a, b) => b.trophies - a.trophies);
+
+  for (let i = 0; i < players.length; i++) {
+    players[i].rank = i + 1;
+    if (players[i].rank <= 5) {
+      players[i].trend = 'promotion';
+    } else if (players[i].rank >= 21) {
+      players[i].trend = tier === 'bronze' ? 'safe' : 'demotion';
+    } else {
+      players[i].trend = 'safe';
+    }
+  }
+
+  const currentUser = players.find(p => p.isCurrentUser);
+
+  return {
+    tier: tier,
+    weekNumber: weekNumber,
+    endsAt: endsAt,
+    players: players,
+    currentUserTrophies: trophies,
+    currentUserRank: currentUser ? currentUser.rank : players.length,
+    promotionCutoff: 5,
+    demotionCutoff: 21
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -494,6 +593,20 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 2.0. Günün Şarkısı
+  // 2.0.1. Haftalık Ligler & Liderlik Tablosu
+  if (req.method === 'GET' && req.url.startsWith('/api/league/leaderboard')) {
+    const urlObj = new URL(req.url, 'http://localhost');
+    const userId = urlObj.searchParams.get('userId') || 'user_1';
+    const trophies = parseInt(urlObj.searchParams.get('trophies')) || 150;
+    const userName = urlObj.searchParams.get('userName') || 'Ben';
+    const userAvatar = urlObj.searchParams.get('userAvatar') || '🎧';
+
+    const data = generateLeagueLeaderboard(userId, trophies, userName, userAvatar);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(data));
+    return;
+  }
+
   if (req.method === 'GET' && req.url.startsWith('/api/daily-song')) {
     const urlObj = new URL(req.url, 'http://localhost');
     const dateStr = urlObj.searchParams.get('date') || new Date().toISOString().slice(0, 10);

@@ -132,7 +132,7 @@ class MatchResultScreen extends StatelessWidget {
                       ],
                     ),
 
-                    if (game.lastEarnedCoins > 0 || game.lastEarnedShards > 0 || game.lastEarnedXp > 0) ...[
+                    if (game.lastEarnedCoins > 0 || game.lastEarnedShards > 0 || game.lastEarnedXp > 0 || game.lastEarnedTrophies != 0) ...[
                       const SizedBox(height: 14),
                       const Divider(color: AppTheme.borderSubtle, height: 1),
                       const SizedBox(height: 12),
@@ -141,6 +141,34 @@ class MatchResultScreen extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
+                          // Kupa Ödülü / Kaybı
+                          if (game.lastEarnedTrophies != 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: (game.lastEarnedTrophies > 0 ? Colors.amber : AppTheme.crimson).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: (game.lastEarnedTrophies > 0 ? Colors.amber : AppTheme.crimson).withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('🏆', style: TextStyle(fontSize: 14)),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '${game.lastEarnedTrophies > 0 ? "+" : ""}${game.lastEarnedTrophies} Kupa',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: game.lastEarnedTrophies > 0 ? Colors.amber : const Color(0xFFFCA5A5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           // Sezon Pass XP Ödülü
                           if (game.lastEarnedXp > 0)
                             Container(

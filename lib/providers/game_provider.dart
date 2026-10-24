@@ -15,6 +15,7 @@ import '../models/store_item.dart';
 import '../models/player_stats.dart';
 import '../models/season_pass_model.dart';
 import '../models/daily_song_model.dart';
+import '../models/league_model.dart';
 import 'package:http/http.dart' as http;
 import '../services/music_api_service.dart';
 import '../services/auth_service.dart';
@@ -151,7 +152,16 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   int get lastEarnedShards => _lastEarnedShards;
   int _lastEarnedXp = 0;
   int get lastEarnedXp => _lastEarnedXp;
+  int _lastEarnedTrophies = 0;
+  int get lastEarnedTrophies => _lastEarnedTrophies;
   String? _lastRewardedBadgeName;
+
+  // Lig Sistemi & Kupa
+  int _trophies = 150;
+  int get trophies => _trophies;
+  LeagueGroupData? _leagueGroup;
+  LeagueGroupData? get leagueGroup => _leagueGroup;
+  LeagueTier get currentLeagueTier => _leagueGroup?.tier ?? LeagueTier.bronze;
   String? get lastRewardedBadgeName => _lastRewardedBadgeName;
 
   List<CollectionBadge> _badges = List.from(CollectionBadge.defaultBadges);
@@ -292,6 +302,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       _coins = prefs.getInt('user_coins') ?? _coins;
+      _trophies = prefs.getInt('user_trophies') ?? _trophies;
       _jokerShards = prefs.getInt('user_joker_shards') ?? _jokerShards;
       _dailyStreak = prefs.getInt('user_daily_streak') ?? 0;
       _energy = prefs.getInt('user_energy') ?? _energy;
@@ -501,6 +512,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         if (changed) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('user_coins', _coins);
+      await prefs.setInt('user_trophies', _trophies);
           await prefs.setInt('user_energy', _energy);
           await prefs.setInt('user_jokers', powerUp5050Count);
           await prefs.setBool('user_is_vip', _isVip);
@@ -520,6 +532,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('user_coins', _coins);
+      await prefs.setInt('user_trophies', _trophies);
       await prefs.setInt('user_joker_shards', _jokerShards);
       await prefs.setInt('user_daily_streak', _dailyStreak);
       await prefs.setInt('user_energy', _energy);
@@ -618,6 +631,11 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     final earnedCoins = isWinner ? 50 : (isDraw ? 25 : 10);
     _coins += earnedCoins;
     _lastEarnedCoins = earnedCoins;
+
+    final earnedTrophies = isWinner ? 25 : (isDraw ? 10 : -12);
+    _lastEarnedTrophies = earnedTrophies;
+    _trophies = max(0, _trophies + earnedTrophies);
+    fetchLeagueData();
 
     final earnedShards = isWinner ? 3 : (isDraw ? 2 : 1);
     _lastEarnedShards = earnedShards;
@@ -1341,6 +1359,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _initApp() async {
     await _loadUserData();
     await fetchRemoteConfig();
+    fetchLeagueData();
   }
 
   @override
@@ -1949,6 +1968,104 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('Daily song kayıt hatası: $e');
     }
+  }
+
+  // ==================== HAFTALIK LİG İŞLEMLERİ ====================
+
+  void addTrophies(int delta) {
+    _trophies = max(0, _trophies + delta);
+    _saveUserData();
+    fetchLeagueData();
+    notifyListeners();
+  }
+
+  Future<void> fetchLeagueData() async {
+    try {
+      final uri = Uri.parse(
+        'http://80.253.246.132:6060/api/league/leaderboard?userId=${_googleUserId ?? "local_user"}&trophies=$_trophies&userName=${Uri.encodeComponent(_customPlayerName)}&userAvatar=${Uri.encodeComponent(_customAvatar)}',
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        _leagueGroup = LeagueGroupData.fromJson(data, currentUserId: _googleUserId ?? 'local_user');
+        notifyListeners();
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback: Yerel lig verisi oluştur
+    _leagueGroup = _generateLocalLeagueGroup();
+    notifyListeners();
+  }
+
+  LeagueGroupData _generateLocalLeagueGroup() {
+    final curTrophies = _trophies;
+    final tier = curTrophies >= 2800
+        ? LeagueTier.legends
+        : (curTrophies >= 1600
+            ? LeagueTier.diamond
+            : (curTrophies >= 800
+                ? LeagueTier.gold
+                : (curTrophies >= 300 ? LeagueTier.silver : LeagueTier.bronze)));
+
+    const botNames = [
+      'Melisa', 'Baran_99', 'Ece Rocker', 'Kaan M.', 'Melike_Pop', 'Caner 90s', 'Zeynep_K',
+      'Burak TR', 'Ahmet_06', 'Selin Hits', 'Emre Rap', 'Buse_D', 'Oğuzhan', 'Gamze_Y',
+      'Mert Can', 'Ezgi_Rock', 'Tolga', 'İrem_S', 'Murat_88', 'Gizem_A', 'Serkan', 'Duygu',
+      'Alperen', 'Hilal'
+    ];
+    const botAvatars = ['🎧', '🎸', '🎤', '🎹', '🎷', '🥁', '🎺', '🎻', '🎙️', '💿'];
+
+    final minT = tier.minTrophies;
+    final maxT = tier == LeagueTier.legends ? 5000 : (LeagueTier.values[tier.index + 1].minTrophies - 20);
+
+    final List<LeaguePlayer> players = [];
+    for (int i = 0; i < 24; i++) {
+      final pseudo = ((i * 37 + 17) % 100) / 100.0;
+      final t = (minT + pseudo * (maxT - minT)).round();
+      players.add(LeaguePlayer(
+        id: 'bot_$i',
+        name: botNames[i % botNames.length],
+        avatar: botAvatars[i % botAvatars.length],
+        trophies: t,
+        rank: 0,
+      ));
+    }
+
+    final currentUser = LeaguePlayer(
+      id: _googleUserId ?? 'local_user',
+      name: _customPlayerName,
+      avatar: _customAvatar,
+      trophies: curTrophies,
+      rank: 0,
+      isCurrentUser: true,
+    );
+    players.add(currentUser);
+
+    players.sort((a, b) => b.trophies.compareTo(a.trophies));
+    for (int i = 0; i < players.length; i++) {
+      players[i].rank = i + 1;
+      if (players[i].rank <= 5) {
+        players[i].trend = LeagueTrend.promotion;
+      } else if (players[i].rank >= 21) {
+        players[i].trend = tier == LeagueTier.bronze ? LeagueTrend.safe : LeagueTrend.demotion;
+      } else {
+        players[i].trend = LeagueTrend.safe;
+      }
+    }
+
+    final now = DateTime.now();
+    final daysUntilSunday = (DateTime.sunday - now.weekday) % 7;
+    final endsAt = DateTime(now.year, now.month, now.day + (daysUntilSunday == 0 ? 7 : daysUntilSunday), 23, 59, 59);
+
+    return LeagueGroupData(
+      tier: tier,
+      weekNumber: 4,
+      endsAt: endsAt,
+      players: players,
+      currentUserTrophies: curTrophies,
+      currentUserRank: currentUser.rank,
+    );
   }
 
   void resetToHome() {

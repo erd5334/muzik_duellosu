@@ -11,6 +11,7 @@ import '../widgets/career_stats_dialog.dart';
 import '../widgets/banner_ad_widget.dart';
 import 'season_pass_screen.dart';
 import 'daily_song_screen.dart';
+import 'league_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -169,6 +170,16 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                       ],
+                    ),
+
+                    // Haftalık Lig Butonu
+                    IconButton(
+                      icon: const Text('🏆', style: TextStyle(fontSize: 20)),
+                      tooltip: 'Haftalık Lig & Sıralama',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LeagueScreen()),
+                      ),
                     ),
 
                     // Kariyer & İstatistik Butonu
@@ -686,6 +697,129 @@ class HomeScreen extends StatelessWidget {
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white),
                             ),
                           ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 2.8 Haftalık Ligler & Sıralama Şeridi
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LeagueScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          game.currentLeagueTier.primaryColor.withValues(alpha: 0.15),
+                          const Color(0xFF131722),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: game.currentLeagueTier.primaryColor.withValues(alpha: 0.4),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: game.currentLeagueTier.primaryColor.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: game.currentLeagueTier.gradientColors,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              game.currentLeagueTier.icon,
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    game.currentLeagueTier.displayName,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: game.currentLeagueTier.primaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  if (game.leagueGroup != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '#${game.leagueGroup!.currentUserRank}. Sıra',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${game.trophies} 🏆 • Pazar 23:59\'da sıfırlanır',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: game.currentLeagueTier.primaryColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: game.currentLeagueTier.primaryColor.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Text(
+                            'Sıralama 🏆',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: game.currentLeagueTier.primaryColor,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
