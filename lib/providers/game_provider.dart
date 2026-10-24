@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -187,6 +188,19 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   int get cooldownRemainingSeconds => isUnderCooldown
       ? ((_cooldownUntil - DateTime.now().millisecondsSinceEpoch) / 1000).ceil()
       : 0;
+
+  // FAZ 5: Alevli Combo & Game Feel (Juice)
+  int _currentMatchCombo = 0;
+  int get currentMatchCombo => _currentMatchCombo;
+  int _maxMatchCombo = 0;
+  int get maxMatchCombo => _maxMatchCombo;
+
+  double get comboMultiplierBonus {
+    if (_currentMatchCombo >= 4) return 0.30; // 4+ seri: +%30
+    if (_currentMatchCombo == 3) return 0.20; // 3 seri: +%20
+    if (_currentMatchCombo == 2) return 0.10; // 2 seri: +%10
+    return 0.0;
+  }
 
   // Ekonomi & Enerji Sistemi
   int _energy = 10;
@@ -706,9 +720,14 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       );
     }
 
-    final earnedCoins = isWinner ? 50 : (isDraw ? 25 : 10);
+    // Teselli Ödülü & Kazanç Dağılımı (FAZ 5)
+    final earnedCoins = isWinner ? 50 : (isDraw ? 25 : 15);
     _coins += earnedCoins;
     _lastEarnedCoins = earnedCoins;
+
+    final earnedXp = isWinner ? 100 : (isDraw ? 50 : 25);
+    _lastEarnedXp = earnedXp;
+    addSeasonPassXp(earnedXp);
 
     final earnedTrophies = isWinner ? 25 : (isDraw ? 10 : -12);
     _lastEarnedTrophies = earnedTrophies;
@@ -761,10 +780,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       }
     }
 
-    // Sezon Bileti XP'si & Görev Takibi
-    final earnedXp = isWinner ? 60 : (isDraw ? 35 : 20);
-    _lastEarnedXp = earnedXp;
-    _seasonPass.currentXp += earnedXp;
+    // Görev Takibi
     trackMissionProgress('complete_match', amount: 1);
     if (isWinner) {
       trackMissionProgress('win_match', amount: 1);
@@ -1819,11 +1835,23 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
             _currentQuestion!.correctOptionIndex = correctIdx;
             _currentQuestion!.userScoreEarned = earned;
             _userTotalScore = total;
-            if (earned > 0 && _selectedCategory != null) {
-              _playerStats.recordCorrectAnswer(
-                artist: _currentQuestion!.song.artist,
-                categoryId: _selectedCategory!.id,
-              );
+            if (earned > 0) {
+              _currentMatchCombo++;
+              if (_currentMatchCombo > _maxMatchCombo) _maxMatchCombo = _currentMatchCombo;
+              if (_currentMatchCombo >= 3) {
+                HapticFeedback.vibrate();
+              } else {
+                HapticFeedback.mediumImpact();
+              }
+              if (_selectedCategory != null) {
+                _playerStats.recordCorrectAnswer(
+                  artist: _currentQuestion!.song.artist,
+                  categoryId: _selectedCategory!.id,
+                );
+              }
+            } else {
+              _currentMatchCombo = 0;
+              HapticFeedback.heavyImpact();
             }
           }
           notifyListeners();
@@ -1866,6 +1894,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
             }
             if (_currentQuestion!.selectedOptionIndex == null) {
               _currentQuestion!.userAnswerTimeMs = _roundDurationSec * 1000;
+              _currentMatchCombo = 0;
             }
           }
 
@@ -2247,10 +2276,20 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
     final isCorrect = optionIndex == question.correctOptionIndex;
     if (isCorrect) {
+      _currentMatchCombo++;
+      if (_currentMatchCombo > _maxMatchCombo) _maxMatchCombo = _currentMatchCombo;
+      if (_currentMatchCombo >= 3) {
+        HapticFeedback.vibrate();
+      } else {
+        HapticFeedback.mediumImpact();
+      }
+
       final factor = (_remainingMs / (_roundDurationSec * 1000.0)).clamp(0.05, 1.0);
-      final score = (factor * 950 + 50).toInt();
-      question.userScoreEarned = score;
-      _userTotalScore += score;
+      final baseScore = (factor * 950 + 50).toInt();
+      final comboBonus = (baseScore * comboMultiplierBonus).toInt();
+      final totalScore = baseScore + comboBonus;
+      question.userScoreEarned = totalScore;
+      _userTotalScore += totalScore;
 
       final timeSpentMs = (_roundDurationSec * 1000) - _remainingMs;
       if (timeSpentMs < 3000) {
@@ -2264,6 +2303,8 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         );
       }
     } else {
+      _currentMatchCombo = 0;
+      HapticFeedback.heavyImpact();
       question.userScoreEarned = 0;
     }
 
@@ -2570,6 +2611,8 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     _isCustomRoom = false;
     _partyRoom = null;
     _isPartyMode = false;
+    _currentMatchCombo = 0;
+    _maxMatchCombo = 0;
     notifyListeners();
   }
 

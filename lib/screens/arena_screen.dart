@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
@@ -119,6 +120,40 @@ class ArenaScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              if (game.currentMatchCombo >= 2) ...[
+                                const SizedBox(height: 3),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFEA580C), Color(0xFFEAB308)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFEA580C).withValues(alpha: 0.45),
+                                        blurRadius: 6,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text('🔥', style: TextStyle(fontSize: 10)),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${game.currentMatchCombo}x KOMBO (+${(game.comboMultiplierBonus * 100).toInt()}%)',
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 4),
                               WaveformVisualizer(
                                 isPlaying: game.isAudioPlaying,
@@ -145,7 +180,7 @@ class ArenaScreen extends StatelessWidget {
                   ),
                 ),
 
-                // 2. Zaman Sayacı (Hız Çubuğu)
+                // 2. Zaman Sayacı (Hız Çubuğu & Nabız/Tansiyon Efekti)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
                   child: Column(
@@ -154,10 +189,12 @@ class ArenaScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
                           value: game.timerProgress,
-                          minHeight: 5,
+                          minHeight: (game.status == GameStatus.playing && game.remainingMs <= 3000) ? 6 : 5,
                           backgroundColor: AppTheme.surfaceLight,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            game.timerProgress > 0.35 ? AppTheme.amber : AppTheme.crimson,
+                            (game.status == GameStatus.playing && game.remainingMs <= 3000)
+                                ? AppTheme.crimson
+                                : (game.timerProgress > 0.35 ? AppTheme.amber : AppTheme.crimson),
                           ),
                         ),
                       ),
@@ -165,10 +202,27 @@ class ArenaScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Kalan: ${(game.remainingMs / 1000).toStringAsFixed(1)}s',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
-                          ),
+                          if (game.status == GameStatus.playing && game.remainingMs <= 3000)
+                            Row(
+                              children: [
+                                const Icon(Icons.alarm_rounded, color: AppTheme.crimson, size: 14),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'ACELE ET: ${(game.remainingMs / 1000).toStringAsFixed(1)}s',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.crimson,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              'Kalan: ${(game.remainingMs / 1000).toStringAsFixed(1)}s',
+                              style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                            ),
                           if (game.status == GameStatus.playing)
                             Text(
                               '⚡ Hız Bonusu: +$currentScorePotential Puan',
@@ -500,7 +554,10 @@ class ArenaScreen extends StatelessWidget {
               game.powerUp5050Count <= 0 ||
               question.eliminatedOptions.isNotEmpty)
           ? null
-          : () => game.use5050PowerUp(),
+          : () {
+              HapticFeedback.mediumImpact();
+              game.use5050PowerUp();
+            },
       icon: const Icon(Icons.bolt_rounded, size: 16, color: AppTheme.amber),
       label: Text(
         '50/50 Jokeri (${game.powerUp5050Count})',

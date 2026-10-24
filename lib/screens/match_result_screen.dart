@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/duel_question.dart';
 import '../providers/game_provider.dart';
@@ -6,18 +7,48 @@ import '../services/ad_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/song_listen_sheet.dart';
 
-class MatchResultScreen extends StatelessWidget {
+class MatchResultScreen extends StatefulWidget {
   const MatchResultScreen({super.key});
+
+  @override
+  State<MatchResultScreen> createState() => _MatchResultScreenState();
+}
+
+class _MatchResultScreenState extends State<MatchResultScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final game = Provider.of<GameProvider>(context, listen: false);
+      if (game.userTotalScore > game.opponentTotalScore) {
+        HapticFeedback.heavyImpact();
+        Future.delayed(const Duration(milliseconds: 180), () {
+          HapticFeedback.mediumImpact();
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final game = context.watch<GameProvider>();
     final isWinner = game.userTotalScore > game.opponentTotalScore;
     final isDraw = game.userTotalScore == game.opponentTotalScore;
+    final diff = (game.userTotalScore - game.opponentTotalScore).abs();
+    final isNearMiss = !isWinner && !isDraw && diff <= 150;
 
-    final title = isDraw ? 'BERABERE!' : (isWinner ? 'ZAFER SENİN!' : 'KAYBETTİN');
-    final titleColor = isDraw ? AppTheme.amber : (isWinner ? AppTheme.emerald : AppTheme.crimson);
-    final iconEmoji = isDraw ? '🤝' : (isWinner ? '🏆' : '💔');
+    final title = isDraw
+        ? 'BERABERE!'
+        : (isWinner
+            ? 'ZAFER SENİN!'
+            : (isNearMiss ? 'ÇOK YAKLAŞTIN!' : 'KAYBETTİN'));
+    final titleColor = isDraw
+        ? AppTheme.amber
+        : (isWinner
+            ? AppTheme.emerald
+            : (isNearMiss ? const Color(0xFFF97316) : AppTheme.crimson));
+    final iconEmoji = isDraw ? '🤝' : (isWinner ? '🏆' : (isNearMiss ? '🎯' : '💔'));
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -46,6 +77,21 @@ class MatchResultScreen extends StatelessWidget {
                       letterSpacing: -0.5,
                     ),
                   ),
+                  if (isNearMiss) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF97316).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        'Fark sadece $diff puan! Bir sonraki maç senin olabilir! 🔥',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFF97316)),
+                      ),
+                    ),
+                  ],
                   SizedBox(height: isShort ? 10 : 14),
 
                   // Geniş ekranda Skor Kartı ve Performans Kartı yan yana, dar ekranda alt alta
@@ -159,13 +205,17 @@ class MatchResultScreen extends StatelessWidget {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.amber,
+                    backgroundColor: isNearMiss ? const Color(0xFFEA580C) : AppTheme.amber,
+                    foregroundColor: isNearMiss ? Colors.white : Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'Rövanş Oyna',
-                    style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black),
+                  child: Text(
+                    isNearMiss ? 'Hemen Rövanş Al! 🔥' : 'Rövanş Oyna',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isNearMiss ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
               ),
@@ -452,6 +502,16 @@ class MatchResultScreen extends StatelessWidget {
             userIsBetter: userAvgSec > 0 && (oppAvgSec <= 0 || userAvgSec < oppAvgSec),
             oppIsBetter: oppAvgSec > 0 && (userAvgSec <= 0 || oppAvgSec < userAvgSec),
           ),
+          if (game.maxMatchCombo >= 2) ...[
+            const SizedBox(height: 6),
+            _buildStatRow(
+              userVal: '${game.maxMatchCombo}x Seri',
+              metric: '🔥 En İyi Kombo',
+              oppVal: '-',
+              userIsBetter: true,
+              oppIsBetter: false,
+            ),
+          ],
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 
 class TactileChoiceButton extends StatefulWidget {
@@ -65,10 +66,16 @@ class _TactileChoiceButtonState extends State<TactileChoiceButton> {
     }
 
     return GestureDetector(
-      onTapDown: widget.showResult || widget.onTap == null ? null : (_) => setState(() => _isPressed = true),
+      onTapDown: widget.showResult || widget.onTap == null ? null : (_) {
+        HapticFeedback.selectionClick();
+        setState(() => _isPressed = true);
+      },
       onTapUp: widget.showResult || widget.onTap == null ? null : (_) => setState(() => _isPressed = false),
       onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.showResult ? null : widget.onTap,
+      onTap: widget.showResult ? null : () {
+        HapticFeedback.lightImpact();
+        widget.onTap?.call();
+      },
       child: AnimatedScale(
         scale: _isPressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 100),
@@ -88,6 +95,8 @@ class _TactileChoiceButtonState extends State<TactileChoiceButton> {
     required Color textColor,
     Widget? trailingIcon,
   }) {
+    final hasResultGlow = widget.showResult && (widget.isCorrect || (widget.isSelected && !widget.isCorrect));
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
@@ -97,13 +106,27 @@ class _TactileChoiceButtonState extends State<TactileChoiceButton> {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1.5),
+        border: Border.all(color: borderColor, width: hasResultGlow ? 2.0 : 1.5),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
+          if (widget.showResult && widget.isCorrect) ...[
+            BoxShadow(
+              color: AppTheme.emerald.withValues(alpha: 0.5),
+              blurRadius: 16,
+              spreadRadius: 2,
+            ),
+          ] else if (widget.showResult && widget.isSelected && !widget.isCorrect) ...[
+            BoxShadow(
+              color: AppTheme.crimson.withValues(alpha: 0.45),
+              blurRadius: 14,
+              spreadRadius: 1,
+            ),
+          ] else ...[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ],
       ),
       child: Row(
