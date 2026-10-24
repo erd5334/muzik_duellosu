@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/song.dart';
 import '../models/duel_question.dart';
 import '../models/category_model.dart';
+import '../models/daily_song_model.dart';
 
 class MusicApiService {
   static final MusicApiService _instance = MusicApiService._internal();
@@ -170,5 +171,105 @@ class MusicApiService {
     }
 
     return questions;
+  }
+
+  // ==================== GÜNÜN ŞARKISI (HEARDLE) ====================
+
+  static final List<DailySongItem> _curatedDailySongs = [
+    const DailySongItem(
+      artist: 'Barış Manço',
+      title: 'Gülpembe',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bf/25/4b/bf254b04-f5f4-279c-7b3b-857e4e137a6b/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/4a/1c/b5/4a1cb5b9-1f48-a083-0975-f8b1e4277bbf/mzaf_7824883391851240366.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Tarkan',
+      title: 'Kıl Oldum',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/8e/3c/64/8e3c64c1-eebe-86a3-d02f-bfa4a6d2fdbd/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/a5/d2/97/a5d29792-50d4-8d96-c143-bf688f98ec4e/mzaf_16480579973216892556.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Sezen Aksu',
+      title: 'Sen Ağlama',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/40/e3/d3/40e3d386-8968-3e3c-f4b0-a35948332aa6/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/8f/3e/eb/8f3eeb88-06fc-8d13-cb2e-e4787a2a059b/mzaf_10672776366099953833.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Duman',
+      title: 'Senden Daha Güzel',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/eb/fa/d7/ebfad733-4f05-7f41-0ca0-be58d4a5db22/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/c3/85/3e/c3853e5e-5b23-74b5-bf6e-6be12cf2c498/mzaf_1495026922572520853.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Müslüm Gürses',
+      title: 'Affet',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/f4/bc/cf/f4bccc58-48b8-7c85-e115-45c10b7b122e/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/b9/ca/26/b9ca26a2-6eb6-dc46-d242-cf1097fa668e/mzaf_13501258837372228392.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Sertab Erener',
+      title: 'Yanarım',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/0c/33/c0/0c33c0ce-d4a9-85e8-5ee4-ee49b290cb7c/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/8b/6f/a7/8b6fa7c5-d72b-8390-34ee-38e932b13be9/mzaf_6755498877119159937.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Kenan Doğulu',
+      title: 'Yaparım Bilirsin',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/5e/5c/bb/5e5cbb34-871c-43f1-d009-844c8df6395b/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/21/29/7a/21297a7f-c6ad-45e3-cf9e-6ce5cb6a2b8e/mzaf_17292271811560388913.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Şebnem Ferah',
+      title: 'Sil Baştan',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/ee/1f/ef/ee1fef0a-a035-71c1-11a5-e36611f7c653/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/9c/04/aa/9c04aa60-0d92-23c3-6316-f368fdfb5eb7/mzaf_11843105159048383842.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Mor ve Ötesi',
+      title: 'Bir Derdim Var',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/80/7e/d3/807ed37e-61ea-f725-d913-6f8101a93e36/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/1b/2a/82/1b2a829f-3ef8-cceb-d98c-8f43eb911850/mzaf_16238612140409865181.plus.aac.p.m4a',
+    ),
+    const DailySongItem(
+      artist: 'Haluk Levent',
+      title: 'Elfida',
+      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/e0/75/4a/e0754a1d-a3df-a6df-16fc-0c2ef3a778c1/cover.jpg/600x600bb.jpg',
+      previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/7e/6b/6b/7e6b6b77-d3c5-bc9a-b44c-c376174a7b54/mzaf_13506169527712398501.plus.aac.p.m4a',
+    ),
+  ];
+
+  Future<DailySongData> fetchDailySong() async {
+    final now = DateTime.now();
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    try {
+      final response = await http
+          .get(Uri.parse('http://80.253.246.132:6060/api/daily-song?date=$dateStr'))
+          .timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return DailySongData.fromJson(data);
+      }
+    } catch (e) {
+      // Çevrimdışı veya sunucu gecikmesinde fallback çalışır
+    }
+
+    // Fallback: Deterministic günlük şarkı
+    int hash = 0;
+    for (int i = 0; i < dateStr.length; i++) {
+      hash = ((hash << 5) - hash) + dateStr.codeUnitAt(i);
+      hash &= 0x7FFFFFFF;
+    }
+    final index = hash % _curatedDailySongs.length;
+    final selected = _curatedDailySongs[index];
+
+    final searchPool = _curatedDailySongs.map((s) => s.displayName).toList();
+
+    return DailySongData(
+      date: dateStr,
+      dayNumber: (hash % 1000) + 1,
+      song: selected,
+      searchPool: searchPool,
+    );
   }
 }

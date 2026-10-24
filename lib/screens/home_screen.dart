@@ -10,6 +10,7 @@ import '../widgets/collection_dialog.dart';
 import '../widgets/career_stats_dialog.dart';
 import '../widgets/banner_ad_widget.dart';
 import 'season_pass_screen.dart';
+import 'daily_song_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -550,6 +551,141 @@ class HomeScreen extends StatelessWidget {
                           )
                         else
                           const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 2.7 Günün Şarkısı (Heardle / Wordle Modu) Şeridi
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DailySongScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E1735), Color(0xFF140F24)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.45)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text('🌟', style: TextStyle(fontSize: 18)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Günün Şarkısı',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Text('🔥', style: TextStyle(fontSize: 10)),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '${game.dailyStreak}',
+                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFF87171)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                game.dailySongProgress?.isCompleted == true
+                                    ? (game.dailySongProgress!.isWon
+                                        ? '🎉 Bugünkü şarkıyı ${game.dailySongProgress!.solvedStep}. saniyede bildin!'
+                                        : 'Bugünkü şarkı tamamlandı. Yarın yeni şarkı!')
+                                    : '1 saniyede şarkıyı tahmin et, ödülleri kap! 🎧',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: game.dailySongProgress?.isCompleted == true
+                                      ? (game.dailySongProgress!.isWon ? AppTheme.emerald : AppTheme.textMuted)
+                                      : const Color(0xFFA78BFA),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (game.dailySongProgress?.isCompleted == true)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: game.dailySongProgress!.isWon
+                                  ? AppTheme.emerald.withValues(alpha: 0.15)
+                                  : Colors.white10,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: game.dailySongProgress!.isWon ? AppTheme.emerald : Colors.white24,
+                              ),
+                            ),
+                            child: Text(
+                              game.dailySongProgress!.isWon ? '✅ Bildin' : 'Bitti',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: game.dailySongProgress!.isWon ? AppTheme.emerald : AppTheme.textMuted,
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'Oyna 🎧',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
+                          ),
                       ],
                     ),
                   ),

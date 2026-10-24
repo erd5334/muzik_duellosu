@@ -14,6 +14,7 @@ import '../models/song.dart';
 import '../models/store_item.dart';
 import '../models/player_stats.dart';
 import '../models/season_pass_model.dart';
+import '../models/daily_song_model.dart';
 import 'package:http/http.dart' as http;
 import '../services/music_api_service.dart';
 import '../services/auth_service.dart';
@@ -177,6 +178,16 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   List<StoreItem> get inGameStoreItems => _storeItems.where((i) => i.isInGame && i.isActive).toList();
   StoreItem? getStoreItem(String id) => _storeItems.where((i) => i.id == id).firstOrNull;
 
+  // ==================== GÜNÜN ŞARKISI (HEARDLE MODU) ====================
+  DailySongData? _dailySongData;
+  DailySongData? get dailySongData => _dailySongData;
+
+  DailySongProgress? _dailySongProgress;
+  DailySongProgress? get dailySongProgress => _dailySongProgress;
+
+  int _dailyStreak = 0;
+  int get dailyStreak => _dailyStreak;
+
   // Sıfır Gecikmeli Ses Önbelleği (RAM'de BytesSource olarak tutulur)
   final Map<String, Uint8List> _audioCache = {};
   final Set<String> _pendingAudioFetches = {};
@@ -282,6 +293,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       _coins = prefs.getInt('user_coins') ?? _coins;
       _jokerShards = prefs.getInt('user_joker_shards') ?? _jokerShards;
+      _dailyStreak = prefs.getInt('user_daily_streak') ?? 0;
       _energy = prefs.getInt('user_energy') ?? _energy;
       _hasNoAds = prefs.getBool('user_has_no_ads') ?? _hasNoAds;
       _isVip = prefs.getBool('user_is_vip') ?? _isVip;
@@ -345,6 +357,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       _googleUserId = prefs.getString('user_google_id');
       _googleUserEmail = prefs.getString('user_google_email');
       notifyListeners();
+      loadDailySong();
       if (_googleUserId != null && _googleUserId!.isNotEmpty) {
         fetchProfileFromServer();
       }
@@ -508,6 +521,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('user_coins', _coins);
       await prefs.setInt('user_joker_shards', _jokerShards);
+      await prefs.setInt('user_daily_streak', _dailyStreak);
       await prefs.setInt('user_energy', _energy);
       await prefs.setInt('last_energy_timestamp', _lastEnergyTimestamp);
       await prefs.setBool('user_has_no_ads', _hasNoAds);
@@ -1822,6 +1836,119 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     _wsSubscription = null;
     await _wsChannel?.sink.close();
     _wsChannel = null;
+  }
+
+  // ==================== GÜNÜN ŞARKISI (HEARDLE) İŞLEMLERİ ====================
+
+  Future<void> loadDailySong() async {
+    try {
+      _dailySongData = await _apiService.fetchDailySong();
+      if (_dailySongData != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final key = 'daily_song_progress_${_dailySongData!.date}';
+        final jsonStr = prefs.getString(key);
+        if (jsonStr != null && jsonStr.isNotEmpty) {
+          try {
+            _dailySongProgress = DailySongProgress.fromJson(jsonDecode(jsonStr));
+          } catch (e) {
+            _dailySongProgress = DailySongProgress(date: _dailySongData!.date);
+          }
+        } else {
+          _dailySongProgress = DailySongProgress(date: _dailySongData!.date);
+        }
+      }
+    } catch (e) {
+      debugPrint('Günün Şarkısı yüklenemedi: $e');
+    }
+    notifyListeners();
+  }
+
+  Future<bool> submitDailySongGuess(String guess) async {
+    if (_dailySongData == null || _dailySongProgress == null || _dailySongProgress!.isCompleted) {
+      return false;
+    }
+
+    final targetArtist = _dailySongData!.song.artist.toLowerCase().trim();
+    final targetTitle = _dailySongData!.song.title.toLowerCase().trim();
+    final targetDisplay = _dailySongData!.song.displayName.toLowerCase().trim();
+
+    final cleanGuess = guess.toLowerCase().trim();
+
+    final isCorrect = cleanGuess == targetDisplay ||
+        cleanGuess == targetTitle ||
+        (cleanGuess.contains(targetArtist) && cleanGuess.contains(targetTitle));
+
+    final attempt = DailySongAttempt(
+      guess: guess,
+      isSkipped: false,
+      isCorrect: isCorrect,
+    );
+
+    _dailySongProgress!.attempts.add(attempt);
+
+    if (isCorrect) {
+      _dailySongProgress!.isCompleted = true;
+      _dailySongProgress!.isWon = true;
+      _dailySongProgress!.solvedStep = _dailySongProgress!.attempts.length;
+      _dailyStreak++;
+
+      // Ödüller
+      addSeasonPassXp(250);
+      _coins += 150;
+      _jokerShards += 3;
+      trackMissionProgress('complete_match', amount: 1);
+    } else if (_dailySongProgress!.attempts.length >= DailySongProgress.maxAttempts) {
+      _dailySongProgress!.isCompleted = true;
+      _dailySongProgress!.isWon = false;
+      _dailySongProgress!.solvedStep = 0;
+      // Teselli ödülü
+      addSeasonPassXp(50);
+      _coins += 30;
+    }
+
+    await _saveDailySongProgress();
+    _saveUserData();
+    notifyListeners();
+    return isCorrect;
+  }
+
+  Future<void> skipDailySongStep() async {
+    if (_dailySongData == null || _dailySongProgress == null || _dailySongProgress!.isCompleted) {
+      return;
+    }
+
+    final attempt = const DailySongAttempt(
+      guess: null,
+      isSkipped: true,
+      isCorrect: false,
+    );
+
+    _dailySongProgress!.attempts.add(attempt);
+
+    if (_dailySongProgress!.attempts.length >= DailySongProgress.maxAttempts) {
+      _dailySongProgress!.isCompleted = true;
+      _dailySongProgress!.isWon = false;
+      _dailySongProgress!.solvedStep = 0;
+      // Teselli ödülü
+      addSeasonPassXp(50);
+      _coins += 30;
+    }
+
+    await _saveDailySongProgress();
+    _saveUserData();
+    notifyListeners();
+  }
+
+  Future<void> _saveDailySongProgress() async {
+    if (_dailySongProgress == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'daily_song_progress_${_dailySongProgress!.date}';
+      await prefs.setString(key, jsonEncode(_dailySongProgress!.toJson()));
+      await prefs.setInt('user_daily_streak', _dailyStreak);
+    } catch (e) {
+      debugPrint('Daily song kayıt hatası: $e');
+    }
   }
 
   void resetToHome() {
