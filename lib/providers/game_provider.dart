@@ -178,6 +178,11 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   String? get googleUserId => _googleUserId;
   String? _googleUserEmail;
   String? get googleUserEmail => _googleUserEmail;
+  String? _authProvider;
+  String? get authProvider => _authProvider;
+  bool get isLoggedIn => (_googleUserId != null && _googleUserId!.isNotEmpty);
+  bool get isAppleLoggedIn => _authProvider == 'apple';
+  String? get userEmail => _googleUserEmail;
 
   // Hükmen Galibiyet & Terk / Cooldown Sistemi (FAZ 3)
   Map<String, dynamic>? _forfeitCelebrationData;
@@ -457,6 +462,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
       _googleUserId = prefs.getString('user_google_id');
       _googleUserEmail = prefs.getString('user_google_email');
+      _authProvider = prefs.getString('user_auth_provider') ?? (_googleUserId != null ? 'google' : null);
       notifyListeners();
       loadDailySong();
       if (_googleUserId != null && _googleUserId!.isNotEmpty) {
@@ -471,8 +477,10 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> fetchProfileFromServer() async {
     if (_googleUserId == null || _googleUserId!.isEmpty) return;
     try {
+      final emailParam = Uri.encodeComponent(_googleUserEmail ?? '');
+      final appleParam = _authProvider == 'apple' ? (_googleUserId ?? '') : '';
       final res = await http.get(
-        Uri.parse('http://80.253.246.132:6060/api/user/profile?google_id=$_googleUserId'),
+        Uri.parse('http://80.253.246.132:6060/api/user/profile?google_id=$_googleUserId&email=$emailParam&apple_id=$appleParam'),
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
@@ -487,8 +495,22 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
         if (data.containsKey('coins')) {
           final sCoins = (data['coins'] as num).toInt();
-          if (_coins != sCoins) {
+          if (sCoins > _coins) {
             _coins = sCoins;
+            changed = true;
+          }
+        }
+        if (data.containsKey('trophies') && data['trophies'] != null) {
+          final sTrophies = (data['trophies'] as num).toInt();
+          if (sTrophies > _trophies) {
+            _trophies = sTrophies;
+            changed = true;
+          }
+        }
+        if (data.containsKey('joker_shards') && data['joker_shards'] != null) {
+          final sJokers = (data['joker_shards'] as num).toInt();
+          if (sJokers > _jokerShards) {
+            _jokerShards = sJokers;
             changed = true;
           }
         }
@@ -638,6 +660,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       await prefs.setString('user_season_pass_data', jsonEncode(_seasonPass.toJson()));
       if (_googleUserId != null) await prefs.setString('user_google_id', _googleUserId!);
       if (_googleUserEmail != null) await prefs.setString('user_google_email', _googleUserEmail!);
+      if (_authProvider != null) await prefs.setString('user_auth_provider', _authProvider!);
 
       String? badgesJson;
       if (_badges.isNotEmpty) {
@@ -1195,6 +1218,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       final user = await AuthService.instance.signInWithGoogle();
       if (user != null) {
         _googleUserId = user.id;
+        _authProvider = 'google';
         _googleUserEmail = user.email;
         _customPlayerName = user.displayName;
         if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
@@ -1214,16 +1238,47 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     return false;
   }
 
-  Future<void> logoutGoogle() async {
+  /// Apple ile Giriş Yap (iOS & macOS, App Store Guideline 4.8)
+  Future<bool> loginWithApple() async {
+    try {
+      final user = await AuthService.instance.signInWithApple();
+      if (user != null) {
+        _googleUserId = user.id;
+        _authProvider = 'apple';
+        if (user.email.isNotEmpty) {
+          _googleUserEmail = user.email;
+        }
+        if (user.displayName.isNotEmpty && _customPlayerName.startsWith('Oyuncu_')) {
+          _customPlayerName = user.displayName;
+        }
+
+        // Sunucumuzdaki SQLite Veritabanı ile Senkronizasyon (E-posta ve koleksiyonları koruyarak)
+        await _syncWithServer(user);
+
+        await _saveUserData();
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Apple Giriş Hatası: $e');
+    }
+    return false;
+  }
+
+  Future<void> logoutGoogle() async => logout();
+
+  Future<void> logout() async {
     try {
       await AuthService.instance.signOut();
       _googleUserId = null;
       _googleUserEmail = null;
+      _authProvider = null;
       _customPlayerName = 'Oyuncu_${Random().nextInt(9000) + 1000}';
       _customAvatar = '🎧';
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('user_google_id');
       await prefs.remove('user_google_email');
+      await prefs.remove('user_auth_provider');
       await _saveUserData();
       notifyListeners();
     } catch (e) {
@@ -1244,11 +1299,16 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
       final body = jsonEncode({
         'google_id': user.id,
+        'apple_id': user.authProvider == 'apple' ? user.id : null,
+        'auth_provider': user.authProvider,
         'email': user.email,
         'name': user.displayName,
         'avatar': user.photoUrl ?? _customAvatar,
         'badges_data': jsonEncode(badgesMap),
         'stats_json': jsonEncode(_playerStats.toJson()),
+        'coins': _coins,
+        'trophies': _trophies,
+        'joker_shards': _jokerShards,
         'energy': _energy,
         'last_energy_timestamp': _lastEnergyTimestamp,
       });
@@ -1261,9 +1321,17 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
       if (response.statusCode == 200) {
         final res = jsonDecode(response.body);
-        if (res['status'] == 'logged_in') {
+        if (res['status'] == 'logged_in' || res['status'] == 'registered') {
           final sUser = res['user'];
-          _coins = sUser['coins'] ?? _coins;
+          if (sUser['coins'] != null) {
+            _coins = max(_coins, (sUser['coins'] as num).toInt());
+          }
+          if (sUser['trophies'] != null) {
+            _trophies = max(_trophies, (sUser['trophies'] as num).toInt());
+          }
+          if (sUser['joker_shards'] != null) {
+            _jokerShards = max(_jokerShards, (sUser['joker_shards'] as num).toInt());
+          }
           if (sUser['energy'] != null && (sUser['energy'] as num).toInt() > _energy) {
             _energy = (sUser['energy'] as num).toInt();
           }
@@ -1283,9 +1351,10 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
               final Map<String, dynamic> bMap = jsonDecode(sUser['badges_data']);
               for (final b in _badges) {
                 if (bMap.containsKey(b.id)) {
-                  b.currentShards = bMap[b.id]['currentShards'] ?? b.currentShards;
-                  b.isUnlocked = bMap[b.id]['isUnlocked'] ?? b.isUnlocked;
-                  b.isEquipped = bMap[b.id]['isEquipped'] ?? b.isEquipped;
+                  final rShards = (bMap[b.id]['currentShards'] as num?)?.toInt() ?? 0;
+                  if (rShards > b.currentShards) b.currentShards = rShards;
+                  if (bMap[b.id]['isUnlocked'] == true) b.isUnlocked = true;
+                  if (bMap[b.id]['isEquipped'] == true) b.isEquipped = true;
                 }
               }
             } catch (_) {}

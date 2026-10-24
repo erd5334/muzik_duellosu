@@ -164,6 +164,10 @@ try {
   try { db.exec(`ALTER TABLE users ADD COLUMN ban_reason TEXT DEFAULT '';`); } catch (_) {}
   try { db.exec(`ALTER TABLE users ADD COLUMN stats_json TEXT DEFAULT '{}';`); } catch (_) {}
   try { db.exec(`ALTER TABLE users ADD COLUMN last_energy_timestamp INTEGER DEFAULT 0;`); } catch (_) {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN apple_id TEXT DEFAULT '';`); } catch (_) {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN trophies INTEGER DEFAULT 150;`); } catch (_) {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN joker_shards INTEGER DEFAULT 0;`); } catch (_) {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'google';`); } catch (_) {}
 
   console.log('📦 SQLite Veritabanı ve Koleksiyon Tabloları Hazır:', dbPath);
 } catch (e) {
@@ -189,9 +193,32 @@ function getAllStoreItems(includeInactive = false) {
 }
 
 function getUserByGoogleId(googleId) {
-  if (!db) return null;
+  if (!db || !googleId) return null;
   const stmt = db.prepare('SELECT * FROM users WHERE google_id = ?');
   return stmt.get(googleId);
+}
+
+function getUserByIdOrEmail(id, email, appleId) {
+  if (!db) return null;
+  if (appleId && String(appleId).trim().length > 0) {
+    try {
+      const byApple = db.prepare('SELECT * FROM users WHERE apple_id = ?').get(String(appleId).trim());
+      if (byApple) return byApple;
+    } catch (_) {}
+  }
+  if (id && String(id).trim().length > 0) {
+    try {
+      const byId = db.prepare('SELECT * FROM users WHERE google_id = ?').get(String(id).trim());
+      if (byId) return byId;
+    } catch (_) {}
+  }
+  if (email && String(email).trim().length > 0) {
+    try {
+      const byEmail = db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').get(String(email).trim());
+      if (byEmail) return byEmail;
+    } catch (_) {}
+  }
+  return null;
 }
 
 
@@ -408,44 +435,57 @@ function mergeStats(existingJson, newJson) {
 function saveUser(user) {
   if (!db) return;
 
-  const existing = getUserByGoogleId(user.google_id);
+  const existing = getUserByIdOrEmail(user.google_id, user.email, user.apple_id);
   const safeBadgesData = mergeBadges(existing ? existing.badges_data : '{}', user.badges_data);
   const safeStatsJson = mergeStats(existing ? existing.stats_json : '{}', user.stats_json);
+  const safeCoins = Math.max(existing ? (existing.coins || 0) : 0, user.coins !== undefined ? user.coins : 350);
+  const safeJokers = Math.max(existing ? (existing.powerup_count || 0) : 0, user.powerup_count !== undefined ? user.powerup_count : 2);
+  const safeTrophies = Math.max(existing ? (existing.trophies || 0) : 0, user.trophies !== undefined ? user.trophies : 150);
+  const safeJokerShards = Math.max(existing ? (existing.joker_shards || 0) : 0, user.joker_shards !== undefined ? user.joker_shards : 0);
+  const safeAppleId = user.apple_id || (existing ? (existing.apple_id || '') : '');
+  const primaryId = user.google_id || (existing ? existing.google_id : (user.apple_id || 'user_' + Date.now()));
+
   const safeLastEnergyTimestamp = user.last_energy_timestamp !== undefined
     ? user.last_energy_timestamp
     : (existing ? (existing.last_energy_timestamp || 0) : Date.now());
 
   const stmt = db.prepare(`
-    INSERT INTO users (google_id, email, name, avatar, energy, coins, powerup_count, has_no_ads, is_vip, badges_data, stats_json, last_energy_timestamp, last_login, is_banned, ban_reason)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '')
+    INSERT INTO users (google_id, email, name, avatar, energy, coins, powerup_count, has_no_ads, is_vip, badges_data, stats_json, last_energy_timestamp, last_login, is_banned, ban_reason, apple_id, trophies, joker_shards)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', ?, ?, ?)
     ON CONFLICT(google_id) DO UPDATE SET
-      email=excluded.email,
-      name=excluded.name,
-      avatar=excluded.avatar,
+      email=COALESCE(excluded.email, users.email),
+      name=COALESCE(excluded.name, users.name),
+      avatar=COALESCE(excluded.avatar, users.avatar),
       energy=excluded.energy,
-      coins=excluded.coins,
-      powerup_count=excluded.powerup_count,
-      has_no_ads=excluded.has_no_ads,
-      is_vip=excluded.is_vip,
+      coins=MAX(users.coins, excluded.coins),
+      powerup_count=MAX(users.powerup_count, excluded.powerup_count),
+      has_no_ads=MAX(users.has_no_ads, excluded.has_no_ads),
+      is_vip=MAX(users.is_vip, excluded.is_vip),
       badges_data=?,
       stats_json=?,
       last_energy_timestamp=?,
-      last_login=excluded.last_login
+      last_login=excluded.last_login,
+      apple_id=COALESCE(NULLIF(excluded.apple_id, ''), users.apple_id),
+      trophies=MAX(users.trophies, excluded.trophies),
+      joker_shards=MAX(users.joker_shards, excluded.joker_shards)
   `);
   stmt.run(
-    user.google_id,
+    primaryId,
     user.email,
     user.name,
     user.avatar,
     user.energy !== undefined ? user.energy : 10,
-    user.coins !== undefined ? user.coins : 350,
-    user.powerup_count !== undefined ? user.powerup_count : 2,
+    safeCoins,
+    safeJokers,
     user.has_no_ads ? 1 : 0,
     user.is_vip ? 1 : 0,
     safeBadgesData,
     safeStatsJson,
     safeLastEnergyTimestamp,
     Date.now(),
+    safeAppleId,
+    safeTrophies,
+    safeJokerShards,
     safeBadgesData,
     safeStatsJson,
     safeLastEnergyTimestamp
@@ -1088,14 +1128,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Google ile Giriş / Kayıt Senkronizasyon Uç Noktası
+  // Google & Apple ile Giriş / Kayıt Senkronizasyon Uç Noktası
   if (req.method === 'POST' && req.url === '/api/auth/sync') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        let user = getUserByGoogleId(data.google_id);
+        let user = getUserByIdOrEmail(data.google_id, data.email, data.apple_id);
         if (user && user.is_banned) {
           console.log(`🚫 [KISITLI GİRİŞ ENGELLENDİ] ${user.name} (${user.email}) engellendi.`);
           res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -1104,13 +1144,16 @@ const server = http.createServer(async (req, res) => {
         }
         if (!user) {
           user = {
-            google_id: data.google_id,
-            email: data.email,
-            name: data.name,
-            avatar: data.avatar,
+            google_id: data.google_id || (data.apple_id ? 'apple_' + data.apple_id : 'user_' + Date.now()),
+            apple_id: data.apple_id || '',
+            email: data.email || '',
+            name: data.name || 'Yeni Oyuncu',
+            avatar: data.avatar || '🎧',
             energy: data.energy !== undefined ? data.energy : 10,
-            coins: 350,
-            powerup_count: 2,
+            coins: data.coins !== undefined ? data.coins : 350,
+            powerup_count: data.powerup_count !== undefined ? data.powerup_count : 2,
+            trophies: data.trophies !== undefined ? data.trophies : 150,
+            joker_shards: data.joker_shards !== undefined ? data.joker_shards : 0,
             has_no_ads: 0,
             is_vip: 0,
             badges_data: data.badges_data || '{}',
@@ -1118,20 +1161,26 @@ const server = http.createServer(async (req, res) => {
             last_energy_timestamp: data.last_energy_timestamp || Date.now(),
           };
           saveUser(user);
-          user = getUserByGoogleId(data.google_id);
+          user = getUserByIdOrEmail(user.google_id, user.email, user.apple_id);
           console.log(`🎉 [YENİ KAYIT] ${user.name} (${user.email}) veritabanına eklendi!`);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'registered', user }));
         } else {
-          if (data.stats_json || data.badges_data) {
-            saveUser({
-              ...user,
-              badges_data: data.badges_data || user.badges_data,
-              stats_json: data.stats_json || user.stats_json,
-            });
-            user = getUserByGoogleId(data.google_id);
-          }
-          console.log(`🔑 [GİRİŞ YAPILDI] ${user.name} sunucu profilini aldı.`);
+          // Mevcut test kullanıcısını koru ve verilerini güvenle birleştir
+          saveUser({
+            ...user,
+            ...data,
+            google_id: user.google_id,
+            apple_id: data.apple_id || user.apple_id,
+            email: user.email || data.email,
+            badges_data: data.badges_data || user.badges_data,
+            stats_json: data.stats_json || user.stats_json,
+            coins: data.coins !== undefined ? data.coins : user.coins,
+            trophies: data.trophies !== undefined ? data.trophies : user.trophies,
+            joker_shards: data.joker_shards !== undefined ? data.joker_shards : user.joker_shards,
+          });
+          user = getUserByIdOrEmail(user.google_id, user.email, user.apple_id);
+          console.log(`🔑 [GİRİŞ YAPILDI] ${user.name} (${user.email}) sunucu profilini aldı, ilerlemeler korundu.`);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'logged_in', user }));
         }
@@ -1146,13 +1195,10 @@ const server = http.createServer(async (req, res) => {
   // Kullanıcı Profilini Sunucudan Getir (Mobil Uygulama Açılış & Yenileme)
   if (req.method === 'GET' && req.url.startsWith('/api/user/profile')) {
     const parsedUrl = new URL(req.url, 'http://localhost');
-    const gid = parsedUrl.searchParams.get('google_id');
-    if (!gid) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'google_id gerekli' }));
-      return;
-    }
-    const user = getUserByGoogleId(gid);
+    const gid = parsedUrl.searchParams.get('google_id') || '';
+    const email = parsedUrl.searchParams.get('email') || '';
+    const appleId = parsedUrl.searchParams.get('apple_id') || '';
+    const user = getUserByIdOrEmail(gid, email, appleId);
     if (!user) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'user_not_found' }));

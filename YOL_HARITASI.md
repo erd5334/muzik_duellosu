@@ -206,11 +206,15 @@ flowchart TD
 
 ---
 
-### 1. 🔑 Apple ile Giriş (Sign in with Apple) Kuralı
+### 1. 🔑 Apple ile Giriş (Sign in with Apple) & TestFlight İkon Entegrasyonu
 - **Apple İnceleme Yönergesi (Guideline 4.8):** Uygulamada Google gibi 3. taraf sosyal giriş seçeneği bulunduğu için, Apple iOS kullanıcılarına eşdeğer olarak "Apple ile Giriş" seçeneğinin sunulmasını zorunlu tutar.
-- **İki Uygulama Seçeneği:**
-  - **Seçenek A (Önerilen & Uzun Vadeli):** `sign_in_with_apple` paketi eklenir. iPhone kullanıcıları FaceID / TouchID ile tek tıkla şifresiz giriş yapar. Apple ID sunucudaki SQLite veritabanı ile senkronize edilir.
-  - **Seçenek B (Hızlı Onay Yolu):** İlk sürümde iOS üzerinde sosyal hesap bağlama butonu gizlenerek yalnızca "Misafir Oyuncu" moduyla başlatılır; bu durumda Apple ile Giriş zorunluluğu doğmaz ve ilk onay bürokrasisiz alınır.
+- **Apple ile Giriş İmplementasyonu:** `sign_in_with_apple` paketi ve Xcode `Runner.entitlements` ile FaceID / TouchID tek tıkla oturum açma sağlandı.
+- **🖼️ TestFlight & iOS Uygulama Logosu Entegrasyonu:**
+  - `Assets.xcassets/AppIcon.appiconset` içerisindeki tüm ikon setleri ve 1024x1024 App Store pazarlama ikonu, yüksek çözünürlüklü resmi logo ile güncellendi.
+  - TestFlight ve App Store'da uygulamanın gerçek logosu görünecektir.
+- **🛡️ Mevcut Test Kullanıcılarının İlerlemelerini Koruma Garantisi:**
+  - Mevcut test kullanıcılarının (örneğin e-posta ile giriş yapanların) yakaladıkları plaklar, plak parçaları, joker parçaları, kupaları, altınları ve kariyer istatistikleri sunucu tarafında e-posta bazlı eşleştirilerek korunur.
+  - Sezon Pass dışındaki tüm kalıcı koleksiyonlar (`badges_data`, `stats_json`, `coins`, `trophies`) `Math.max` birleştirme algoritmasıyla sıfırlanmaya karşı garanti altına alınmıştır.
 
 ---
 

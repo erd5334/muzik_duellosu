@@ -539,18 +539,18 @@ class _ProfileTitlesDialogState extends State<ProfileTitlesDialog> with SingleTi
 
           const SizedBox(height: 20),
 
-          // Google Hesabı
+          // Google & Apple Hesap Bağlama Bölümü
           SizedBox(
             width: double.infinity,
-            child: game.googleUserId != null
+            child: game.isLoggedIn
                 ? OutlinedButton(
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(context);
-                      await game.logoutGoogle();
+                      await game.logout();
                       messenger.showSnackBar(
                         const SnackBar(
-                          content: Text('Google hesabından çıkış yapıldı.'),
+                          content: Text('Hesaptan çıkış yapıldı.'),
                           backgroundColor: AppTheme.amber,
                         ),
                       );
@@ -568,7 +568,7 @@ class _ProfileTitlesDialogState extends State<ProfileTitlesDialog> with SingleTi
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Çıkış Yap (${game.googleUserEmail ?? "Google"})',
+                            'Çıkış Yap (${game.userEmail?.isNotEmpty == true ? game.userEmail : (game.isAppleLoggedIn ? "Apple" : "Google")})',
                             style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               color: AppTheme.crimson,
@@ -581,37 +581,81 @@ class _ProfileTitlesDialogState extends State<ProfileTitlesDialog> with SingleTi
                       ],
                     ),
                   )
-                : OutlinedButton(
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      Navigator.pop(context);
-                      final success = await game.loginWithGoogle();
-                      if (success) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text('Google ile bağlandınız: ${game.playerName}!'),
-                            backgroundColor: AppTheme.emerald,
-                          ),
-                        );
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppTheme.amber),
-                      backgroundColor: AppTheme.amber.withValues(alpha: 0.1),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('🌐', style: TextStyle(fontSize: 16)),
-                        SizedBox(width: 8),
-                        Text(
-                          'Google ile Giriş Yap',
-                          style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 13),
+                : Column(
+                    children: [
+                      //  Apple ile Giriş Yap Butonu (iOS için Apple HIG uyumlu)
+                      ElevatedButton(
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(context);
+                          final success = await game.loginWithApple();
+                          if (success) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Apple ile bağlandınız: ${game.playerName}! 🍏'),
+                                backgroundColor: AppTheme.emerald,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
                         ),
-                      ],
-                    ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.apple, color: Colors.black, size: 22),
+                            SizedBox(width: 8),
+                            Text(
+                              'Apple ile Giriş Yap',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // 🌐 Google ile Giriş Yap Butonu
+                      OutlinedButton(
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(context);
+                          final success = await game.loginWithGoogle();
+                          if (success) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Google ile bağlandınız: ${game.playerName}!'),
+                                backgroundColor: AppTheme.emerald,
+                              ),
+                            );
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppTheme.amber),
+                          backgroundColor: AppTheme.amber.withValues(alpha: 0.1),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('🌐', style: TextStyle(fontSize: 16)),
+                            SizedBox(width: 8),
+                            Text(
+                              'Google ile Giriş Yap',
+                              style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
           ),
 
