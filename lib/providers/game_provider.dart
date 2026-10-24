@@ -93,8 +93,40 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   double get timerProgress => (_remainingMs / (_roundDurationSec * 1000)).clamp(0.0, 1.0);
 
   Timer? _countdownTimer;
+  Timer? _botAnswerTimer;
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+
+  // İstatistik Karşılaştırma Getters (Maç Sonu Tablosu)
+  int get userCorrectCount =>
+      _questions.where((q) => q.selectedOptionIndex != null && q.selectedOptionIndex == q.correctOptionIndex).length;
+
+  int get opponentCorrectCount =>
+      _questions.where((q) => q.isOpponentCorrect == true || (q.opponentSelectedOptionIndex != null && q.opponentSelectedOptionIndex == q.correctOptionIndex)).length;
+
+  double get userAverageTimeSec {
+    if (_questions.isEmpty) return 0.0;
+    final totalMs = _questions.fold<int>(0, (sum, q) => sum + (q.userAnswerTimeMs > 0 ? q.userAnswerTimeMs : (_roundDurationSec * 1000)));
+    return (totalMs / _questions.length) / 1000.0;
+  }
+
+  double get opponentAverageTimeSec {
+    if (_questions.isEmpty) return 0.0;
+    final totalMs = _questions.fold<int>(0, (sum, q) => sum + (q.opponentAnswerTimeMs > 0 ? q.opponentAnswerTimeMs : (_roundDurationSec * 1000)));
+    return (totalMs / _questions.length) / 1000.0;
+  }
+
+  double get userFastestTimeSec {
+    final answeredTimes = _questions.where((q) => q.userAnswerTimeMs > 0).map((q) => q.userAnswerTimeMs);
+    if (answeredTimes.isEmpty) return 0.0;
+    return answeredTimes.reduce((a, b) => a < b ? a : b) / 1000.0;
+  }
+
+  double get opponentFastestTimeSec {
+    final answeredTimes = _questions.where((q) => q.opponentAnswerTimeMs > 0).map((q) => q.opponentAnswerTimeMs);
+    if (answeredTimes.isEmpty) return 0.0;
+    return answeredTimes.reduce((a, b) => a < b ? a : b) / 1000.0;
+  }
 
   bool _isAudioPlaying = false;
   bool get isAudioPlaying => _isAudioPlaying;
@@ -1637,10 +1669,18 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
           break;
 
         case 'opponent_answered':
-          final oppEarned = data['opponentEarnedScore'] as int;
-          final oppTotal = data['opponentTotalScore'] as int;
+          final oppEarned = data['opponentEarnedScore'] as int? ?? 0;
+          final oppTotal = data['opponentTotalScore'] as int? ?? 0;
+          final oppOptionIndex = data['selectedOptionIndex'] as int?;
+          final oppTimeMs = data['timeSpentMs'] as int? ?? 0;
+          final isOppCorrect = data['isCorrect'] as bool?;
+
           if (_currentQuestion != null) {
             _currentQuestion!.opponentScoreEarned = oppEarned;
+            _currentQuestion!.opponentHasAnswered = true;
+            _currentQuestion!.opponentSelectedOptionIndex = oppOptionIndex;
+            _currentQuestion!.opponentAnswerTimeMs = oppTimeMs;
+            _currentQuestion!.isOpponentCorrect = isOppCorrect;
             _opponentTotalScore = oppTotal;
           }
           notifyListeners();
@@ -1650,11 +1690,22 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
           final correctIdx = data['correctIndex'] as int;
 
           _countdownTimer?.cancel();
+          _botAnswerTimer?.cancel();
           await _audioPlayer.stop();
 
           if (_currentQuestion != null) {
             _currentQuestion!.correctOptionIndex = correctIdx;
             _currentQuestion!.isAnswered = true;
+
+            // Eğer oyuncu veya rakip süre bitene kadar basmadıysa
+            if (!_currentQuestion!.opponentHasAnswered) {
+              _currentQuestion!.opponentHasAnswered = true;
+              _currentQuestion!.opponentAnswerTimeMs = _roundDurationSec * 1000;
+              _currentQuestion!.isOpponentCorrect = false;
+            }
+            if (_currentQuestion!.selectedOptionIndex == null) {
+              _currentQuestion!.userAnswerTimeMs = _roundDurationSec * 1000;
+            }
           }
 
           _status = GameStatus.roundResult;
@@ -1663,6 +1714,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
         case 'match_over':
           _countdownTimer?.cancel();
+          _botAnswerTimer?.cancel();
           await _audioPlayer.stop();
           awardMatchRewards();
           _status = GameStatus.matchOver;
@@ -1684,6 +1736,33 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   void _startLiveRound(DuelQuestion question) async {
     _remainingMs = _roundDurationSec * 1000;
     _status = GameStatus.playing;
+    _botAnswerTimer?.cancel();
+
+    // Offline / Bot simülasyonu için gerçekçi insan yanıt gecikmesi ve seçimi
+    if (!_isMultiplayer) {
+      final botDelayMs = 2000 + (DateTime.now().millisecond % 2800); // 2.0 - 4.8 saniye
+      _botAnswerTimer = Timer(Duration(milliseconds: botDelayMs), () {
+        if (_status != GameStatus.playing || _currentQuestion != question) return;
+        final willBeCorrect = (DateTime.now().microsecond % 100) < 78; // %78 insan başarı oranı
+        int botOption = question.correctOptionIndex;
+        if (!willBeCorrect || botOption < 0) {
+          final wrong = [0, 1, 2, 3].where((i) => i != question.correctOptionIndex).toList();
+          botOption = wrong[DateTime.now().microsecond % wrong.length];
+        }
+        final remainingAtBot = ((_roundDurationSec * 1000) - botDelayMs).clamp(200, 10000);
+        final factor = (remainingAtBot / (_roundDurationSec * 1000.0)).clamp(0.05, 1.0);
+        final botScore = (botOption == question.correctOptionIndex) ? (factor * 950 + 50).toInt() : 0;
+
+        question.opponentHasAnswered = true;
+        question.opponentSelectedOptionIndex = botOption;
+        question.opponentAnswerTimeMs = botDelayMs;
+        question.isOpponentCorrect = (botOption == question.correctOptionIndex);
+        question.opponentScoreEarned = botScore;
+        _opponentTotalScore += botScore;
+        notifyListeners();
+      });
+    }
+
     notifyListeners();
 
     try {
@@ -1724,6 +1803,8 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
     question.isAnswered = true;
     question.selectedOptionIndex = optionIndex;
+    final timeSpentMs = (_roundDurationSec * 1000) - _remainingMs;
+    question.userAnswerTimeMs = timeSpentMs;
     notifyListeners();
 
     if (_isMultiplayer && _wsChannel != null) {
@@ -1808,7 +1889,32 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (question == null) return;
 
     _countdownTimer?.cancel();
+    _botAnswerTimer?.cancel();
     await _audioPlayer.stop();
+
+    final timeSpentMs = (_roundDurationSec * 1000) - _remainingMs;
+    question.userAnswerTimeMs = timeSpentMs;
+
+    // Eğer bot henüz cevap vermediyse hızlıca bot yanıtını belirle
+    if (!question.opponentHasAnswered) {
+      final botDelayMs = (timeSpentMs + 400 + (DateTime.now().millisecond % 1000)).clamp(1500, _roundDurationSec * 1000);
+      final willBeCorrect = (DateTime.now().microsecond % 100) < 78;
+      int botOption = question.correctOptionIndex;
+      if (!willBeCorrect || botOption < 0) {
+        final wrong = [0, 1, 2, 3].where((i) => i != question.correctOptionIndex).toList();
+        botOption = wrong[DateTime.now().microsecond % wrong.length];
+      }
+      final remainingAtBot = ((_roundDurationSec * 1000) - botDelayMs).clamp(200, 10000);
+      final factor = (remainingAtBot / (_roundDurationSec * 1000.0)).clamp(0.05, 1.0);
+      final botScore = (botOption == question.correctOptionIndex) ? (factor * 950 + 50).toInt() : 0;
+
+      question.opponentHasAnswered = true;
+      question.opponentSelectedOptionIndex = botOption;
+      question.opponentAnswerTimeMs = botDelayMs;
+      question.isOpponentCorrect = (botOption == question.correctOptionIndex);
+      question.opponentScoreEarned = botScore;
+      _opponentTotalScore += botScore;
+    }
 
     final isCorrect = optionIndex == question.correctOptionIndex;
     if (isCorrect) {
@@ -2070,6 +2176,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   void resetToHome() {
     _countdownTimer?.cancel();
+    _botAnswerTimer?.cancel();
     _audioPlayer.stop();
     _disconnectWebSocket();
     _status = GameStatus.idle;
@@ -2089,6 +2196,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     PurchaseService.instance.dispose();
     _energyTimer?.cancel();
     _countdownTimer?.cancel();
+    _botAnswerTimer?.cancel();
     _audioPlayer.dispose();
     _disconnectWebSocket();
     super.dispose();

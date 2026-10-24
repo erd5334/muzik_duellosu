@@ -252,7 +252,10 @@ class MatchResultScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              // Maç Performansı & İstatistik Karşılaştırma Kartı
+              _buildStatsComparisonCard(game),
+
+              const SizedBox(height: 14),
 
               // "Maçta Çalan Şarkılar" Başlığı
               Row(
@@ -297,6 +300,10 @@ class MatchResultScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final q = game.questions[index];
                     final isUserCorrect = q.selectedOptionIndex == q.correctOptionIndex;
+                    final isOppCorrect = q.isOpponentCorrect == true ||
+                        (q.opponentSelectedOptionIndex != null && q.opponentSelectedOptionIndex == q.correctOptionIndex);
+                    final userTimeSec = (q.userAnswerTimeMs / 1000.0).toStringAsFixed(1);
+                    final oppTimeSec = (q.opponentAnswerTimeMs / 1000.0).toStringAsFixed(1);
 
                     return Material(
                       color: Colors.transparent,
@@ -354,25 +361,44 @@ class MatchResultScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              // Puan / Durum
+                              // Sen & Rakip Yanıt Sonuçları
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    isUserCorrect ? '+${q.userScoreEarned}' : '0',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: isUserCorrect ? AppTheme.emerald : AppTheme.textMuted,
-                                    ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Sen: ',
+                                        style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                                      ),
+                                      Text(
+                                        isUserCorrect ? '✔ ${userTimeSec}s' : '✘',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: isUserCorrect ? AppTheme.emerald : AppTheme.crimson,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    isUserCorrect ? 'Doğru' : 'Yanlış',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: isUserCorrect ? AppTheme.emerald : AppTheme.crimson,
-                                    ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Rakip: ',
+                                        style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                                      ),
+                                      Text(
+                                        isOppCorrect ? '✔ ${oppTimeSec}s' : '✘',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: isOppCorrect ? const Color(0xFF6EE7B7) : const Color(0xFFFCA5A5),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -456,6 +482,128 @@ class MatchResultScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStatsComparisonCard(GameProvider game) {
+    final totalRounds = game.questions.isNotEmpty ? game.questions.length : 5;
+    final userCorrect = game.userCorrectCount;
+    final oppCorrect = game.opponentCorrectCount;
+    final userAvgSec = game.userAverageTimeSec;
+    final oppAvgSec = game.opponentAverageTimeSec;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Sen',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.amber),
+                ),
+              ),
+              const Text(
+                '📊 MAÇ PERFORMANSI',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  game.opponent?.name ?? 'Rakip',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Divider(color: AppTheme.borderSubtle, height: 1),
+          const SizedBox(height: 8),
+
+          // Metrik 1: Doğru Yanıt Sayısı
+          _buildStatRow(
+            userVal: '$userCorrect / $totalRounds',
+            metric: '🎯 Doğru Yanıt',
+            oppVal: '$oppCorrect / $totalRounds',
+            userIsBetter: userCorrect > oppCorrect,
+            oppIsBetter: oppCorrect > userCorrect,
+          ),
+          const SizedBox(height: 6),
+
+          // Metrik 2: Ortalama Yanıt Hızı
+          _buildStatRow(
+            userVal: '${userAvgSec.toStringAsFixed(1)} sn',
+            metric: '⚡ Ortalama Hız',
+            oppVal: '${oppAvgSec.toStringAsFixed(1)} sn',
+            userIsBetter: userAvgSec > 0 && (oppAvgSec <= 0 || userAvgSec < oppAvgSec),
+            oppIsBetter: oppAvgSec > 0 && (userAvgSec <= 0 || oppAvgSec < userAvgSec),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow({
+    required String userVal,
+    required String metric,
+    required String oppVal,
+    required bool userIsBetter,
+    required bool oppIsBetter,
+  }) {
+    return Row(
+      children: [
+        // Sol: Kullanıcı Değeri
+        Expanded(
+          child: Text(
+            userVal,
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: userIsBetter ? AppTheme.emerald : AppTheme.textPrimary,
+            ),
+          ),
+        ),
+        // Orta: Metrik Etiketi
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceLight,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.borderSubtle),
+          ),
+          child: Text(
+            metric,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+          ),
+        ),
+        // Sağ: Rakip Değeri
+        Expanded(
+          child: Text(
+            oppVal,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: oppIsBetter ? AppTheme.emerald : AppTheme.textPrimary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

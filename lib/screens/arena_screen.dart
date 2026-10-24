@@ -27,6 +27,30 @@ class ArenaScreen extends StatelessWidget {
     final maxMs = game.roundDurationSec * 1000;
     final currentScorePotential = ((game.remainingMs / maxMs) * 950 + 50).toInt();
 
+    String? userStatus;
+    Color? userStatusColor;
+    if (question.isAnswered) {
+      final isUserCorrect = question.selectedOptionIndex == question.correctOptionIndex;
+      userStatus = isUserCorrect ? '+${question.userScoreEarned}' : '0';
+      userStatusColor = isUserCorrect ? AppTheme.emerald : AppTheme.crimson;
+    }
+
+    String? oppStatus;
+    Color? oppStatusColor;
+    if (question.opponentHasAnswered) {
+      if (question.isAnswered || game.status == GameStatus.roundResult) {
+        final isOppCorrect = question.isOpponentCorrect == true || question.opponentSelectedOptionIndex == question.correctOptionIndex;
+        oppStatus = isOppCorrect ? '+${question.opponentScoreEarned}' : '0';
+        oppStatusColor = isOppCorrect ? AppTheme.emerald : AppTheme.crimson;
+      } else {
+        oppStatus = '⚡ Cevapladı';
+        oppStatusColor = AppTheme.amber;
+      }
+    } else {
+      oppStatus = 'Düşünüyor';
+      oppStatusColor = AppTheme.textMuted;
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -63,6 +87,8 @@ class ArenaScreen extends StatelessWidget {
                           avatar: game.playerAvatar,
                           score: game.userTotalScore,
                           isLeft: true,
+                          statusText: userStatus,
+                          statusColor: userStatusColor,
                         ),
                         Expanded(
                           child: Column(
@@ -99,6 +125,8 @@ class ArenaScreen extends StatelessWidget {
                           avatar: opponent?.avatar ?? '🎸',
                           score: game.opponentTotalScore,
                           isLeft: false,
+                          statusText: oppStatus,
+                          statusColor: oppStatusColor,
                         ),
                       ],
                     ),
@@ -315,6 +343,21 @@ class ArenaScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildMiniAvatar(String avatar) {
+    if (avatar.startsWith('http')) {
+      return ClipOval(
+        child: Image.network(
+          avatar,
+          width: 14,
+          height: 14,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => const Text('🎸', style: TextStyle(fontSize: 10)),
+        ),
+      );
+    }
+    return Text(avatar, style: const TextStyle(fontSize: 10));
+  }
+
   Widget _buildChoiceButton(GameProvider game, dynamic question, int index, {required bool isCompact}) {
     final labels = ['A', 'B', 'C', 'D'];
     final optionText = question.options[index];
@@ -322,6 +365,55 @@ class ArenaScreen extends StatelessWidget {
     final isSelected = question.selectedOptionIndex == index;
     final isCorrect = question.correctOptionIndex == index;
     final showResult = question.isAnswered || game.status == GameStatus.roundResult;
+
+    // Rakibin seçimi göstergesi
+    Widget? opponentBadge;
+    if (question.opponentHasAnswered && question.opponentSelectedOptionIndex == index) {
+      final oppAvatar = game.opponent?.avatar ?? '🎸';
+      if (showResult) {
+        final isOppCorrect = question.isOpponentCorrect == true || index == question.correctOptionIndex;
+        final color = isOppCorrect ? AppTheme.emerald : AppTheme.crimson;
+        opponentBadge = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.6)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildMiniAvatar(oppAvatar),
+              const SizedBox(width: 4),
+              Text(
+                isOppCorrect ? '✔' : '✘',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
+              ),
+            ],
+          ),
+        );
+      } else {
+        opponentBadge = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildMiniAvatar(oppAvatar),
+              const SizedBox(width: 4),
+              const Text(
+                'Rakip',
+                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.amber),
+              ),
+            ],
+          ),
+        );
+      }
+    }
 
     return TactileChoiceButton(
       label: labels[index],
@@ -331,6 +423,7 @@ class ArenaScreen extends StatelessWidget {
       isSelected: isSelected,
       isCorrect: isCorrect,
       showResult: showResult,
+      opponentBadge: opponentBadge,
       onTap: () => game.answerQuestion(index),
     );
   }
@@ -361,6 +454,8 @@ class ArenaScreen extends StatelessWidget {
     required String avatar,
     required int score,
     required bool isLeft,
+    String? statusText,
+    Color? statusColor,
   }) {
     return Row(
       children: [
@@ -389,13 +484,56 @@ class ArenaScreen extends StatelessWidget {
               name,
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
             ),
-            Text(
-              score.toString(),
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textPrimary,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isLeft && statusText != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: statusColor ?? AppTheme.textMuted,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  score.toString(),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                if (isLeft && statusText != null) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: statusColor ?? AppTheme.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

@@ -1513,6 +1513,10 @@ class DuelRoom {
     this.currentRound = roundIndex;
     this.p1.currentRoundAnswered = false;
     this.p2.currentRoundAnswered = false;
+    this.p1.selectedOptionIndex = -1;
+    this.p2.selectedOptionIndex = -1;
+    this.p1.roundTimeSpentMs = 0;
+    this.p2.roundTimeSpentMs = 0;
 
     const q = this.questions[roundIndex];
     const durationMs = (this.settings.roundDurationSec || 10) * 1000;
@@ -1564,10 +1568,17 @@ class DuelRoom {
   handleAnswer(player, optionIndex, remainingMs) {
     if (player.currentRoundAnswered || this.isFinished) return;
     player.currentRoundAnswered = true;
+    player.selectedOptionIndex = optionIndex;
 
     const q = this.questions[this.currentRound];
     const isCorrect = optionIndex === q.correctIndex;
     const maxMs = (this.settings.roundDurationSec || 10) * 1000;
+    const timeSpentMs = Math.max(100, Math.min(maxMs, maxMs - remainingMs));
+    player.roundTimeSpentMs = timeSpentMs;
+    player.totalTimeMs = (player.totalTimeMs || 0) + timeSpentMs;
+    if (isCorrect) {
+      player.correctCount = (player.correctCount || 0) + 1;
+    }
 
     let score = 0;
     if (isCorrect) {
@@ -1583,12 +1594,15 @@ class DuelRoom {
       correctIndex: q.correctIndex,
       earnedScore: score,
       yourTotalScore: player.totalScore,
+      timeSpentMs,
     });
 
     const opponent = player === this.p1 ? this.p2 : this.p1;
     opponent.send({
       type: 'opponent_answered',
       isCorrect,
+      selectedOptionIndex: optionIndex,
+      timeSpentMs,
       opponentEarnedScore: score,
       opponentTotalScore: player.totalScore,
     });

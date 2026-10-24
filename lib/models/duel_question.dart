@@ -15,6 +15,13 @@ class DuelQuestion {
   int opponentScoreEarned = 0;
   Set<int> eliminatedOptions = {}; // 50/50 jokeri için elenenler
 
+  // Rakip Yanıt ve Süre Bilgileri
+  bool opponentHasAnswered = false;
+  int? opponentSelectedOptionIndex;
+  bool? isOpponentCorrect;
+  int userAnswerTimeMs = 0;
+  int opponentAnswerTimeMs = 0;
+
   DuelQuestion({
     required this.song,
     required this.type,

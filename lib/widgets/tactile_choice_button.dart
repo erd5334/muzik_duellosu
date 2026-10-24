@@ -9,6 +9,7 @@ class TactileChoiceButton extends StatefulWidget {
   final bool isCorrect;
   final bool showResult;
   final bool isCompact;
+  final Widget? opponentBadge;
   final VoidCallback? onTap;
 
   const TactileChoiceButton({
@@ -20,6 +21,7 @@ class TactileChoiceButton extends StatefulWidget {
     this.isCorrect = false,
     this.showResult = false,
     this.isCompact = false,
+    this.opponentBadge,
     this.onTap,
   });
 
@@ -141,6 +143,10 @@ class _TactileChoiceButtonState extends State<TactileChoiceButton> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (widget.opponentBadge != null) ...[
+            const SizedBox(width: 8),
+            widget.opponentBadge!,
+          ],
           if (trailingIcon != null) ...[
             const SizedBox(width: 8),
             trailingIcon,
