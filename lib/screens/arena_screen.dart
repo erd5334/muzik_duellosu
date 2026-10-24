@@ -366,53 +366,32 @@ class ArenaScreen extends StatelessWidget {
     final isCorrect = question.correctOptionIndex == index;
     final showResult = question.isAnswered || game.status == GameStatus.roundResult;
 
-    // Rakibin seçimi göstergesi
+    // Rakibin seçimi göstergesi — YALNIZCA oyuncu kendi cevabını verdikten sonra (showResult) gösterilir!
+    // Böylece oyuncu rakibin şıkkına bakıp kopya çekemez.
     Widget? opponentBadge;
-    if (question.opponentHasAnswered && question.opponentSelectedOptionIndex == index) {
+    if (showResult && question.opponentHasAnswered && question.opponentSelectedOptionIndex == index) {
       final oppAvatar = game.opponent?.avatar ?? '🎸';
-      if (showResult) {
-        final isOppCorrect = question.isOpponentCorrect == true || index == question.correctOptionIndex;
-        final color = isOppCorrect ? AppTheme.emerald : AppTheme.crimson;
-        opponentBadge = Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.6)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildMiniAvatar(oppAvatar),
-              const SizedBox(width: 4),
-              Text(
-                isOppCorrect ? '✔' : '✘',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
-              ),
-            ],
-          ),
-        );
-      } else {
-        opponentBadge = Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-          decoration: BoxDecoration(
-            color: Colors.amber.withValues(alpha: 0.22),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildMiniAvatar(oppAvatar),
-              const SizedBox(width: 4),
-              const Text(
-                'Rakip',
-                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.amber),
-              ),
-            ],
-          ),
-        );
-      }
+      final isOppCorrect = question.isOpponentCorrect == true || index == question.correctOptionIndex;
+      final color = isOppCorrect ? AppTheme.emerald : AppTheme.crimson;
+      opponentBadge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildMiniAvatar(oppAvatar),
+            const SizedBox(width: 4),
+            Text(
+              isOppCorrect ? '✔' : '✘',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
+            ),
+          ],
+        ),
+      );
     }
 
     return TactileChoiceButton(
