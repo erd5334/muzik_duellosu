@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:http/http.dart' as http;
 import '../models/daily_song_model.dart';
 import '../providers/game_provider.dart';
 import '../theme/app_theme.dart';
@@ -23,6 +26,8 @@ class _DailySongScreenState extends State<DailySongScreen> {
   Duration _currentPosition = Duration.zero;
   StreamSubscription? _posSub;
   StreamSubscription? _stateSub;
+  Uint8List? _audioBytes;
+  bool _isLoadingAudio = false;
 
   List<String> _filteredSuggestions = [];
   bool _showSuggestions = false;
@@ -31,6 +36,34 @@ class _DailySongScreenState extends State<DailySongScreen> {
   void initState() {
     super.initState();
     _initAudio();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final game = context.read<GameProvider>();
+    final url = game.dailySongData?.song.previewUrl ?? '';
+    if (url.isNotEmpty && _audioBytes == null && !_isLoadingAudio) {
+      _cacheAudio(url);
+    }
+  }
+
+  Future<void> _cacheAudio(String url) async {
+    try {
+      if (mounted) setState(() => _isLoadingAudio = true);
+      final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _audioBytes = resp.bodyBytes;
+          _isLoadingAudio = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoadingAudio = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingAudio = false);
+    }
   }
 
   void _initAudio() {
@@ -96,12 +129,15 @@ class _DailySongScreenState extends State<DailySongScreen> {
       });
     } else {
       final previewUrl = data.song.previewUrl;
-      if (previewUrl.isEmpty) return;
+      if (previewUrl.isEmpty && _audioBytes == null) return;
 
       try {
         await _player.stop();
-        await _player.seek(Duration.zero);
-        await _player.play(UrlSource(previewUrl));
+        if (_audioBytes != null && (!kIsWeb && !Platform.isIOS)) {
+          await _player.play(BytesSource(_audioBytes!));
+        } else {
+          await _player.play(UrlSource(previewUrl));
+        }
         setState(() {
           _isPlaying = true;
         });
@@ -368,11 +404,20 @@ Sen de bil: sahnesenin.com''';
           ],
         ),
         child: Center(
-          child: Icon(
-            _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            size: 38,
-            color: Colors.black,
-          ),
+          child: _isLoadingAudio
+              ? const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    color: Colors.black,
+                    strokeWidth: 2.8,
+                  ),
+                )
+              : Icon(
+                  _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  size: 38,
+                  color: Colors.black,
+                ),
         ),
       ),
     );

@@ -254,14 +254,31 @@ class MusicApiService {
       // Çevrimdışı veya sunucu gecikmesinde fallback çalışır
     }
 
-    // Fallback: Deterministic günlük şarkı
+    // Fallback: Deterministic günlük şarkı & Deezer canlı akışı
     int hash = 0;
     for (int i = 0; i < dateStr.length; i++) {
       hash = ((hash << 5) - hash) + dateStr.codeUnitAt(i);
       hash &= 0x7FFFFFFF;
     }
     final index = hash % _curatedDailySongs.length;
-    final selected = _curatedDailySongs[index];
+    var selected = _curatedDailySongs[index];
+
+    try {
+      final q = Uri.encodeComponent('${selected.artist} ${selected.title}');
+      final dzResp = await http.get(Uri.parse('https://api.deezer.com/search?q=$q&limit=1')).timeout(const Duration(seconds: 3));
+      if (dzResp.statusCode == 200) {
+        final j = jsonDecode(dzResp.body);
+        if (j['data'] != null && (j['data'] as List).isNotEmpty) {
+          final t = j['data'][0];
+          selected = DailySongItem(
+            artist: selected.artist,
+            title: selected.title,
+            artworkUrl: t['album']?['cover_big'] ?? selected.artworkUrl,
+            previewUrl: t['preview'] ?? selected.previewUrl,
+          );
+        }
+      }
+    } catch (_) {}
 
     final searchPool = _curatedDailySongs.map((s) => s.displayName).toList();
 

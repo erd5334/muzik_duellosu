@@ -241,19 +241,19 @@ const CURATED_DAILY_SONGS = [
 
 const DAILY_SONG_CACHE = {};
 
-function fetchLiveItunes(artist, title) {
+function fetchDeezerTrack(artist, title) {
   return new Promise((resolve) => {
     const q = encodeURIComponent(artist + ' ' + title);
-    https.get('https://itunes.apple.com/search?term=' + q + '&country=tr&media=music&entity=song&limit=1', (res) => {
+    https.get('https://api.deezer.com/search?q=' + q + '&limit=1', (res) => {
       let d = '';
       res.on('data', c => d += c);
       res.on('end', () => {
         try {
           const j = JSON.parse(d);
-          if (j.results && j.results.length > 0) {
+          if (j.data && j.data.length > 0 && j.data[0].preview) {
             resolve({
-              previewUrl: j.results[0].previewUrl,
-              artworkUrl: j.results[0].artworkUrl100 ? j.results[0].artworkUrl100.replace('100x100bb', '600x600bb') : null
+              previewUrl: j.data[0].preview,
+              artworkUrl: j.data[0].album && j.data[0].album.cover_big ? j.data[0].album.cover_big : (j.data[0].album ? j.data[0].album.cover_medium : null)
             });
           } else {
             resolve(null);
@@ -279,7 +279,7 @@ async function getDailySongForDate(dateStr) {
   const searchPool = CURATED_DAILY_SONGS.map(s => s.artist + ' - ' + s.title);
 
   try {
-    const live = await fetchLiveItunes(song.artist, song.title);
+    const live = await fetchDeezerTrack(song.artist, song.title);
     if (live && live.previewUrl) {
       song.previewUrl = live.previewUrl;
       if (live.artworkUrl) song.artworkUrl = live.artworkUrl;
