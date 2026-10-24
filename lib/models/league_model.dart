@@ -173,6 +173,8 @@ class LeagueGroupData {
   final int currentUserRank;
   final int promotionCutoff;
   final int demotionCutoff;
+  final bool isDemotionEnabled;
+  final Map<String, dynamic>? tierRewards;
 
   LeagueGroupData({
     required this.tier,
@@ -183,7 +185,23 @@ class LeagueGroupData {
     required this.currentUserRank,
     this.promotionCutoff = 5,
     this.demotionCutoff = 21,
+    this.isDemotionEnabled = true,
+    this.tierRewards,
   });
+
+  Map<String, dynamic> getRewardsForTier(LeagueTier t) {
+    if (tierRewards != null && tierRewards!.containsKey(t.name)) {
+      final map = tierRewards![t.name];
+      if (map is Map) {
+        return {
+          'coins': (map['coinsReward'] ?? map['coins'] ?? 100) as int,
+          'xp': (map['xpReward'] ?? map['xp'] ?? 100) as int,
+          'shards': (map['jokerShardsReward'] ?? map['shards'] ?? 1) as int,
+        };
+      }
+    }
+    return t.weeklyRewards;
+  }
 
   Duration get timeRemaining {
     final diff = endsAt.difference(DateTime.now());
@@ -207,14 +225,19 @@ class LeagueGroupData {
         .map((p) => LeaguePlayer.fromJson(p as Map<String, dynamic>, currentUserId: currentUserId))
         .toList();
 
+    final isDemotionEnabled = json['isDemotionEnabled'] != false;
+    final promotionCutoff = (json['promotionCutoff'] as num?)?.toInt() ?? 5;
+    final demotionCutoff = (json['demotionCutoff'] as num?)?.toInt() ?? 21;
+    final tierRewards = json['tierRewards'] as Map<String, dynamic>?;
+
     // Sort players by trophies descending
     players.sort((a, b) => b.trophies.compareTo(a.trophies));
     for (int i = 0; i < players.length; i++) {
       players[i].rank = i + 1;
-      if (players[i].rank <= 5) {
+      if (players[i].rank <= promotionCutoff) {
         players[i].trend = LeagueTrend.promotion;
-      } else if (players[i].rank >= 21) {
-        players[i].trend = tier == LeagueTier.bronze ? LeagueTrend.safe : LeagueTrend.demotion;
+      } else if (isDemotionEnabled && players[i].rank >= demotionCutoff && tier != LeagueTier.bronze) {
+        players[i].trend = LeagueTrend.demotion;
       } else {
         players[i].trend = LeagueTrend.safe;
       }
@@ -250,8 +273,10 @@ class LeagueGroupData {
       players: players,
       currentUserTrophies: curUser.trophies,
       currentUserRank: curUser.rank,
-      promotionCutoff: (json['promotionCutoff'] as num?)?.toInt() ?? 5,
-      demotionCutoff: (json['demotionCutoff'] as num?)?.toInt() ?? 21,
+      promotionCutoff: promotionCutoff,
+      demotionCutoff: demotionCutoff,
+      isDemotionEnabled: isDemotionEnabled,
+      tierRewards: tierRewards,
     );
   }
 }

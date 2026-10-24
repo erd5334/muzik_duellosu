@@ -468,6 +468,9 @@ class _LeagueScreenState extends State<LeagueScreen> with SingleTickerProviderSt
   }
 
   Widget _buildRewardsTab(LeagueTier currentTier) {
+    final game = context.watch<GameProvider>();
+    final league = game.leagueGroup;
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       physics: const BouncingScrollPhysics(),
@@ -475,7 +478,7 @@ class _LeagueScreenState extends State<LeagueScreen> with SingleTickerProviderSt
       itemBuilder: (ctx, idx) {
         final tier = LeagueTier.values[idx];
         final isCurrent = tier == currentTier;
-        final rewards = tier.weeklyRewards;
+        final rewards = league?.getRewardsForTier(tier) ?? tier.weeklyRewards;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),

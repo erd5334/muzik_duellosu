@@ -125,6 +125,7 @@
         <button class="tab-btn" onclick="switchTab('store')">🛍️ Mağaza ve Paketler</button>
         <button class="tab-btn" onclick="switchTab('users')">👥 Kayıtlı Oyuncular</button>
         <button class="tab-btn" onclick="switchTab('season')">🎟️ Sezon & Görevler</button>
+        <button class="tab-btn" onclick="switchTab('league')">🏆 Haftalık Ligler</button>
       </div>
 
       <!-- 1. PLAK KOLEKSİYONU SEKMESİ -->
@@ -245,6 +246,72 @@
                 </tr>
               </thead>
               <tbody id="tiers-table-body">
+                <!-- Dinamik dolacak -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. HAFTALIK LİGLER SEKMESİ -->
+      <div id="tab-league" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 style="font-size:18px; font-weight:800; margin:0;">🏆 Haftalık Ligler & Küme Yönetimi</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">5 lig kademesinin haftalık altın, XP, joker ödüllerini ve küme düşme/terfi kurallarını yönetin.</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-secondary btn-sm" onclick="loadLeagueConfig()">🔄 Yenile</button>
+            <button class="btn btn-sm" onclick="saveLeagueConfig()">💾 Lig Ayarlarını Kaydet & Canlıya Al</button>
+          </div>
+        </div>
+
+        <!-- Genel Lig & Düşme Kuralları -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="font-size:14px; font-weight:800; color:var(--amber); margin-bottom:12px;">⚙️ Genel Lig Kuralları & Küme Düşme Sistemi</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+            <div>
+              <label>Küme Düşme Sistemi</label>
+              <select id="l-demotion-enabled" style="margin:0;">
+                <option value="true">✅ Aktif (Son 5 kişi alt lige düşer)</option>
+                <option value="false">❌ Devre Dışı (Sadece terfi var, düşme yok)</option>
+              </select>
+            </div>
+            <div>
+              <label>Üst Lige Terfi Edecek Kişi Sayısı</label>
+              <input type="number" id="l-promotion-cutoff" value="5" style="margin:0;">
+            </div>
+            <div>
+              <label>Alt Lige Düşme Sıra Başlangıcı (25 Kişilik Grupta)</label>
+              <input type="number" id="l-demotion-cutoff" value="21" style="margin:0;">
+            </div>
+            <div>
+              <label>Galibiyet Kupa Kazancı (+🏆)</label>
+              <input type="number" id="l-win-trophies" value="25" style="margin:0;">
+            </div>
+            <div>
+              <label>Mağlubiyet Kupa Kaybı (-🏆)</label>
+              <input type="number" id="l-loss-trophies" value="12" style="margin:0;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Kademe Bazlı Ödül Ayarları -->
+        <div class="card">
+          <div style="font-size:16px; font-weight:800; color:var(--amber); margin-bottom:6px;">🏅 5 Lig Kademesi ve Haftalık Ödül Ayarları</div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 16px 0;">Pazar 23:59'da hafta bittiğinde ligdeki oyunculara verilecek ödüller ve minimum kupa gereksinimleri.</p>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:13px;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border); color:var(--text-muted);">
+                  <th style="padding:10px;">Lig Kademesi</th>
+                  <th style="padding:10px;">Minimum Kupa</th>
+                  <th style="padding:10px;">🪙 Altın Ödülü</th>
+                  <th style="padding:10px;">⚡ Sezon XP Ödülü</th>
+                  <th style="padding:10px;">✨ Universal Joker Parçası</th>
+                </tr>
+              </thead>
+              <tbody id="league-tiers-body">
                 <!-- Dinamik dolacak -->
               </tbody>
             </table>
@@ -623,7 +690,10 @@
       const uEl = document.getElementById('tab-users'); if (uEl) uEl.style.display = tab === 'users' ? 'block' : 'none';
       const seasonEl = document.getElementById('tab-season');
       if (seasonEl) seasonEl.style.display = tab === 'season' ? 'block' : 'none';
+      const leagueEl = document.getElementById('tab-league');
+      if (leagueEl) leagueEl.style.display = tab === 'league' ? 'block' : 'none';
       if (tab === 'season') loadSeasonPass();
+      if (tab === 'league') loadLeagueConfig();
       if (tab === 'users') loadUsers();
       if (tab === 'store') loadStoreItems();
     }
@@ -1711,3 +1781,98 @@
 
 </body>
 </html>
+
+
+    // ==================== LİG AYARLARI JS MOTORU ====================
+    let globalLeagueConfig = null;
+    const LEAGUE_TIER_META = [
+      { key: 'bronze', name: 'Bronz Ligi', icon: '🥉', color: '#CD7F32' },
+      { key: 'silver', name: 'Gümüş Ligi', icon: '🥈', color: '#CBD5E1' },
+      { key: 'gold', name: 'Altın Ligi', icon: '🥇', color: '#F59E0B' },
+      { key: 'diamond', name: 'Elmas Ligi', icon: '💎', color: '#38BDF8' },
+      { key: 'legends', name: 'Efsaneler Ligi', icon: '👑', color: '#C084FC' }
+    ];
+
+    function loadLeagueConfig() {
+      fetch('/api/league/config')
+        .then(r => r.json())
+        .then(data => {
+          globalLeagueConfig = data;
+          document.getElementById('l-demotion-enabled').value = data.isDemotionEnabled !== false ? 'true' : 'false';
+          document.getElementById('l-promotion-cutoff').value = data.promotionCutoff || 5;
+          document.getElementById('l-demotion-cutoff').value = data.demotionCutoff || 21;
+          document.getElementById('l-win-trophies').value = data.winTrophies || 25;
+          document.getElementById('l-loss-trophies').value = data.lossTrophies || 12;
+
+          renderLeagueTiers(data.tiers || {});
+        })
+        .catch(e => showToast('Lig ayarları yüklenemedi: ' + e.message, 'error'));
+    }
+
+    function renderLeagueTiers(tiers) {
+      const tbody = document.getElementById('league-tiers-body');
+      tbody.innerHTML = '';
+
+      LEAGUE_TIER_META.forEach(t => {
+        const conf = tiers[t.key] || { minTrophies: 0, coinsReward: 100, xpReward: 100, jokerShardsReward: 1 };
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border)';
+        tr.innerHTML = `
+          <td style="padding:10px;">
+            <span style="font-size:18px;">${t.icon}</span>
+            <strong style="color:${t.color}; margin-left:6px;">${t.name}</strong>
+          </td>
+          <td style="padding:10px;">
+            <input type="number" id="lt-${t.key}-min" value="${conf.minTrophies || 0}" style="width:100px; padding:6px; margin:0;">
+          </td>
+          <td style="padding:10px;">
+            <input type="number" id="lt-${t.key}-coins" value="${conf.coinsReward || 100}" style="width:110px; padding:6px; margin:0;">
+          </td>
+          <td style="padding:10px;">
+            <input type="number" id="lt-${t.key}-xp" value="${conf.xpReward || 100}" style="width:110px; padding:6px; margin:0;">
+          </td>
+          <td style="padding:10px;">
+            <input type="number" id="lt-${t.key}-shards" value="${conf.jokerShardsReward || 1}" style="width:80px; padding:6px; margin:0;">
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function saveLeagueConfig() {
+      const payload = {
+        isDemotionEnabled: document.getElementById('l-demotion-enabled').value === 'true',
+        promotionCutoff: parseInt(document.getElementById('l-promotion-cutoff').value) || 5,
+        demotionCutoff: parseInt(document.getElementById('l-demotion-cutoff').value) || 21,
+        winTrophies: parseInt(document.getElementById('l-win-trophies').value) || 25,
+        lossTrophies: parseInt(document.getElementById('l-loss-trophies').value) || 12,
+        tiers: {}
+      };
+
+      LEAGUE_TIER_META.forEach(t => {
+        payload.tiers[t.key] = {
+          displayName: t.name,
+          minTrophies: parseInt(document.getElementById(`lt-${t.key}-min`).value) || 0,
+          coinsReward: parseInt(document.getElementById(`lt-${t.key}-coins`).value) || 100,
+          xpReward: parseInt(document.getElementById(`lt-${t.key}-xp`).value) || 100,
+          jokerShardsReward: parseInt(document.getElementById(`lt-${t.key}-shards`).value) || 1
+        };
+      });
+
+      fetch('/api/admin/league/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          showToast('✅ Lig ayarları ve ödülleri başarıyla güncellendi!', 'success');
+          loadLeagueConfig();
+        } else {
+          showToast('Hata: ' + (res.error || 'Kaydedilemedi'), 'error');
+        }
+      })
+      .catch(e => showToast('İstek hatası: ' + e.message, 'error'));
+    }
+

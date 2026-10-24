@@ -482,6 +482,86 @@ const BOT_NAMES = [
 ];
 const BOT_AVATARS = ['🎧', '🎸', '🎤', '🎹', '🎷', '🥁', '🎺', '🎻', '🎙️', '💿'];
 
+
+// ==================== LİG AYARLARI & ÖDÜL MOTORU ====================
+const DEFAULT_LEAGUE_CONFIG = {
+  isDemotionEnabled: true,
+  promotionCutoff: 5,
+  demotionCutoff: 21,
+  winTrophies: 25,
+  lossTrophies: 12,
+  tiers: {
+    bronze: {
+      displayName: 'Bronz Ligi',
+      minTrophies: 0,
+      coinsReward: 100,
+      xpReward: 100,
+      jokerShardsReward: 1
+    },
+    silver: {
+      displayName: 'Gümüş Ligi',
+      minTrophies: 300,
+      coinsReward: 200,
+      xpReward: 200,
+      jokerShardsReward: 2
+    },
+    gold: {
+      displayName: 'Altın Ligi',
+      minTrophies: 800,
+      coinsReward: 400,
+      xpReward: 350,
+      jokerShardsReward: 3
+    },
+    diamond: {
+      displayName: 'Elmas Ligi',
+      minTrophies: 1600,
+      coinsReward: 800,
+      xpReward: 600,
+      jokerShardsReward: 5
+    },
+    legends: {
+      displayName: 'Efsaneler Ligi',
+      minTrophies: 2800,
+      coinsReward: 1500,
+      xpReward: 1000,
+      jokerShardsReward: 8
+    }
+  }
+};
+
+function getLeagueSettings() {
+  if (!db) return DEFAULT_LEAGUE_CONFIG;
+  try {
+    db.prepare('CREATE TABLE IF NOT EXISTS league_settings (id TEXT PRIMARY KEY, data_json TEXT, updated_at INTEGER)').run();
+    const row = db.prepare('SELECT data_json FROM league_settings WHERE id = ?').get('active_league');
+    if (row && row.data_json) {
+      return JSON.parse(row.data_json);
+    }
+  } catch (e) {
+    console.error('League settings okuma hatası:', e);
+  }
+  return DEFAULT_LEAGUE_CONFIG;
+}
+
+function saveLeagueSettings(data) {
+  if (!db) return false;
+  try {
+    db.prepare('CREATE TABLE IF NOT EXISTS league_settings (id TEXT PRIMARY KEY, data_json TEXT, updated_at INTEGER)').run();
+    const jsonStr = typeof data === 'string' ? data : JSON.stringify(data);
+    const now = Date.now();
+    const existing = db.prepare('SELECT id FROM league_settings WHERE id = ?').get('active_league');
+    if (existing) {
+      db.prepare('UPDATE league_settings SET data_json = ?, updated_at = ? WHERE id = ?').run(jsonStr, now, 'active_league');
+    } else {
+      db.prepare('INSERT INTO league_settings (id, data_json, updated_at) VALUES (?, ?, ?)').run('active_league', jsonStr, now);
+    }
+    return true;
+  } catch (e) {
+    console.error('League settings kaydetme hatası:', e);
+    return false;
+  }
+}
+
 function getTierForTrophies(trophies) {
   if (trophies >= 2800) return 'legends';
   if (trophies >= 1600) return 'diamond';
@@ -499,6 +579,7 @@ function getNextSundayDate() {
 }
 
 function generateLeagueLeaderboard(userId, userTrophies, userName, userAvatar) {
+  const config = getLeagueSettings();
   const trophies = Math.max(0, parseInt(userTrophies) || 120);
   const tier = getTierForTrophies(trophies);
   const endsAt = getNextSundayDate();
@@ -566,8 +647,10 @@ function generateLeagueLeaderboard(userId, userTrophies, userName, userAvatar) {
     players: players,
     currentUserTrophies: trophies,
     currentUserRank: currentUser ? currentUser.rank : players.length,
-    promotionCutoff: 5,
-    demotionCutoff: 21
+    promotionCutoff: config.promotionCutoff || 5,
+    demotionCutoff: config.demotionCutoff || 21,
+    isDemotionEnabled: config.isDemotionEnabled !== false,
+    tierRewards: config.tiers
   };
 }
 
@@ -593,6 +676,30 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 2.0. Günün Şarkısı
+  // 2.0.2. Lig Ayarları & Ödülleri (Admin & App)
+  if (req.method === 'GET' && req.url === '/api/league/config') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(getLeagueSettings()));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/admin/league/config') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const success = saveLeagueSettings(data);
+        res.writeHead(success ? 200 : 500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
   // 2.0.1. Haftalık Ligler & Liderlik Tablosu
   if (req.method === 'GET' && req.url.startsWith('/api/league/leaderboard')) {
     const urlObj = new URL(req.url, 'http://localhost');
