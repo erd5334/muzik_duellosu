@@ -1701,89 +1701,9 @@
       .catch(err => alert('Ağ hatası: ' + err.message));
     }
 
-  </script>
+  
 
-  <!-- MODAL: GÖREV EKLE / DÜZENLE -->
-  <div id="mission-modal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="mission-modal-title" style="font-size:18px; font-weight:800;">🎯 Yeni Görev Ekle</h3>
-        <button class="close-btn" onclick="closeMissionModal()">&times;</button>
-      </div>
-      <form id="mission-form" onsubmit="saveMissionForm(event)">
-        <input type="hidden" id="m-id">
-        
-        <label>Görev Başlığı *</label>
-        <input type="text" id="m-title" placeholder="Örn: 90'lar Fırtınası" required>
-
-        <label>Açıklama (Kullanıcıya Görünecek Metin) *</label>
-        <input type="text" id="m-desc" placeholder="Örn: 90'lar Pop kategorisinde 5 galibiyet al" required>
-
-        <div style="display:flex; gap:12px;">
-          <div style="flex:1;">
-            <label>Kategori / Periyot *</label>
-            <select id="m-category">
-              <option value="daily">⚡ Günlük (Daily)</option>
-              <option value="weekly">🗓️ Haftalık (Weekly)</option>
-              <option value="seasonal">🏆 Sezonluk (Seasonal)</option>
-            </select>
-          </div>
-          <div style="flex:1;">
-            <label>İkon (Emoji) *</label>
-            <input type="text" id="m-icon" value="🎤" required>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:12px;">
-          <div style="flex:1;">
-            <label>Tetikleyici Eylem (Action Key) *</label>
-            <select id="m-action">
-              <option value="complete_match">Düello Tamamla (complete_match)</option>
-              <option value="win_match">Düello Kazan (win_match)</option>
-              <option value="fast_answer">Hızlı Doğru Bil (&lt;3sn) (fast_answer)</option>
-              <option value="category_win">Kategori Özel Galibiyet (category_win)</option>
-            </select>
-          </div>
-          <div style="flex:1;">
-            <label>Hedef Sayısı *</label>
-            <input type="number" id="m-target" value="3" min="1" required>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:12px;">
-          <div style="flex:1;">
-            <label>Kazanılacak XP *</label>
-            <input type="number" id="m-xp" value="150" min="10" required>
-          </div>
-          <div style="flex:1;">
-            <label>Ek Ödül Türü</label>
-            <select id="m-reward-type" onchange="onMissionRewardTypeChange()">
-              <option value="coins">🪙 Altın (Coins)</option>
-              <option value="energy">⚡ Enerji (Energy)</option>
-              <option value="joker">🎯 Joker Paketi (50/50)</option>
-              <option value="shard">💿 Plak Parçası (Koleksiyon)</option>
-              <option value="none">❌ Ek Ödül Yok (Sadece XP)</option>
-            </select>
-          </div>
-          <div style="flex:1;" id="m-reward-amount-box">
-            <label id="m-reward-amount-label">Ödül Miktarı</label>
-            <input type="number" id="m-reward-amount" value="50" min="0">
-          </div>
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top:16px;">
-          <button type="button" class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="closeMissionModal()">İptal</button>
-          <button type="submit" class="btn" style="flex:1; justify-content:center;">Kaydet</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-</body>
-</html>
-
-
-    // ==================== LİG AYARLARI JS MOTORU ====================
+// ==================== LİG AYARLARI JS MOTORU ====================
     let globalLeagueConfig = null;
     const LEAGUE_TIER_META = [
       { key: 'bronze', name: 'Bronz Ligi', icon: '🥉', color: '#CD7F32' },
@@ -1875,4 +1795,83 @@
       })
       .catch(e => showToast('İstek hatası: ' + e.message, 'error'));
     }
+  </script>
 
+  <!-- MODAL: GÖREV EKLE / DÜZENLE -->
+  <div id="mission-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="mission-modal-title" style="font-size:18px; font-weight:800;">🎯 Yeni Görev Ekle</h3>
+        <button class="close-btn" onclick="closeMissionModal()">&times;</button>
+      </div>
+      <form id="mission-form" onsubmit="saveMissionForm(event)">
+        <input type="hidden" id="m-id">
+        
+        <label>Görev Başlığı *</label>
+        <input type="text" id="m-title" placeholder="Örn: 90'lar Fırtınası" required>
+
+        <label>Açıklama (Kullanıcıya Görünecek Metin) *</label>
+        <input type="text" id="m-desc" placeholder="Örn: 90'lar Pop kategorisinde 5 galibiyet al" required>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Kategori / Periyot *</label>
+            <select id="m-category">
+              <option value="daily">⚡ Günlük (Daily)</option>
+              <option value="weekly">🗓️ Haftalık (Weekly)</option>
+              <option value="seasonal">🏆 Sezonluk (Seasonal)</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label>İkon (Emoji) *</label>
+            <input type="text" id="m-icon" value="🎤" required>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Tetikleyici Eylem (Action Key) *</label>
+            <select id="m-action">
+              <option value="complete_match">Düello Tamamla (complete_match)</option>
+              <option value="win_match">Düello Kazan (win_match)</option>
+              <option value="fast_answer">Hızlı Doğru Bil (&lt;3sn) (fast_answer)</option>
+              <option value="category_win">Kategori Özel Galibiyet (category_win)</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label>Hedef Sayısı *</label>
+            <input type="number" id="m-target" value="3" min="1" required>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label>Kazanılacak XP *</label>
+            <input type="number" id="m-xp" value="150" min="10" required>
+          </div>
+          <div style="flex:1;">
+            <label>Ek Ödül Türü</label>
+            <select id="m-reward-type" onchange="onMissionRewardTypeChange()">
+              <option value="coins">🪙 Altın (Coins)</option>
+              <option value="energy">⚡ Enerji (Energy)</option>
+              <option value="joker">🎯 Joker Paketi (50/50)</option>
+              <option value="shard">💿 Plak Parçası (Koleksiyon)</option>
+              <option value="none">❌ Ek Ödül Yok (Sadece XP)</option>
+            </select>
+          </div>
+          <div style="flex:1;" id="m-reward-amount-box">
+            <label id="m-reward-amount-label">Ödül Miktarı</label>
+            <input type="number" id="m-reward-amount" value="50" min="0">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button type="button" class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="closeMissionModal()">İptal</button>
+          <button type="submit" class="btn" style="flex:1; justify-content:center;">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>
