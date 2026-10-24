@@ -51,7 +51,14 @@ class ArenaScreen extends StatelessWidget {
       oppStatusColor = AppTheme.textMuted;
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _showExitDialog(context, game);
+        }
+      },
+      child: Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(game.selectedCategory?.title ?? 'Şarkıyı Bil Bakalım'),
@@ -184,8 +191,9 @@ class ArenaScreen extends StatelessWidget {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// Yatay veya Kısa Ekranlar İçin 2 Sütunlu Taşmayan Düzen (MuMu Player / Web)
   Widget _buildLandscapeLayout(
@@ -656,20 +664,66 @@ class ArenaScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text('Düellodan Çıkılsın mı?'),
-        content: const Text('Maçtan çıkarsanız bu düello yenilgi sayılacaktır.'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppTheme.crimson, width: 1.2),
+        ),
+        title: const Row(
+          children: [
+            Text('⚠️ ', style: TextStyle(fontSize: 20)),
+            Text(
+              'Düelloyu Terk Et?',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Maçtan ayrılırsanız hükmen mağlup sayılacaksınız:',
+              style: TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.crimson.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.crimson.withValues(alpha: 0.3)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• -20 Kupa kaybedeceksiniz 📉', style: TextStyle(fontSize: 12, color: AppTheme.crimson, fontWeight: FontWeight.w700)),
+                  SizedBox(height: 4),
+                  Text('• Galibiyet seriniz sıfırlanacak 🔥', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  SizedBox(height: 4),
+                  Text('• Harcanan enerjiniz iade edilmez ⚡', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  SizedBox(height: 4),
+                  Text('• Sık maç terk edenlere 5 dk ceza verilir ⏳', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Devam Et', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text('Maça Dön', style: TextStyle(color: AppTheme.emerald, fontWeight: FontWeight.w800)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              game.resetToHome();
+              game.forfeitActiveDuel();
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.crimson),
-            child: const Text('Çık', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.crimson,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Terk Et', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),

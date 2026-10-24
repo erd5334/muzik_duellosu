@@ -1465,6 +1465,40 @@ function createBotPlayer() {
   };
 }
 
+
+// Oyuncu Terk / Kaçma Takibi (Anti-Ragequit & Cooldown)
+const FORFEIT_TRACKER = new Map();
+const FORFEIT_COOLDOWN_MS = 5 * 60 * 1000; // 5 dakika maç yasağı
+const FORFEIT_WINDOW_MS = 60 * 60 * 1000; // 1 saatlik inceleme penceresi
+const MAX_ALLOWED_FORFEITS = 3; // 1 saatte 3 kez terk eden ceza alır
+
+function recordForfeitPenalty(player) {
+  if (!player || player.isBot) return;
+  const key = player.googleId || player.id;
+  const now = Date.now();
+  let list = FORFEIT_TRACKER.get(key) || [];
+  list = list.filter(t => (now - t) < FORFEIT_WINDOW_MS);
+  list.push(now);
+  FORFEIT_TRACKER.set(key, list);
+  console.log(`⚠️ [TERK CEZASI] ${player.name} (${key}) son 1 saatte ${list.length}. kez maçı terk etti.`);
+}
+
+function checkPlayerCooldown(player) {
+  if (!player || player.isBot) return 0;
+  const key = player.googleId || player.id;
+  const list = FORFEIT_TRACKER.get(key) || [];
+  const now = Date.now();
+  const recent = list.filter(t => (now - t) < FORFEIT_WINDOW_MS);
+  if (recent.length >= MAX_ALLOWED_FORFEITS) {
+    const lastForfeit = recent[recent.length - 1];
+    const diff = now - lastForfeit;
+    if (diff < FORFEIT_COOLDOWN_MS) {
+      return Math.ceil((FORFEIT_COOLDOWN_MS - diff) / 1000);
+    }
+  }
+  return 0;
+}
+
 // Oda Yönetimi
 class DuelRoom {
   constructor({ id, code, isCustom, settings, p1, p2, questions }) {
@@ -1541,7 +1575,7 @@ class DuelRoom {
         artworkUrl: q.artworkUrl,
         promptText: q.promptText,
         options: q.options,
-        correctIndex: q.correctIndex,
+        correctIndex: -1, // Server-Authoritative Anti-Cheat
       },
     };
 
@@ -1676,11 +1710,20 @@ class DuelRoom {
     clearTimeout(this.timer);
     clearTimeout(this.botAnswerTimer);
 
+    recordForfeitPenalty(disconnectedPlayer);
+
     const other = disconnectedPlayer === this.p1 ? this.p2 : this.p1;
     if (!other.isBot) {
+      console.log(`🏆 [HÜKMEN GALİBİYET] ${disconnectedPlayer.name} terk etti -> ${other.name} kazandı!`);
       other.send({
-        type: 'opponent_disconnected',
-        message: `${disconnectedPlayer.name} oyundan ayrıldı. Zafer senin!`,
+        type: 'opponent_forfeit',
+        leaverName: disconnectedPlayer.name,
+        trophiesWon: 30,
+        coinsWon: 50,
+        xpWon: 100,
+        userScore: other.totalScore || 1000,
+        opponentScore: disconnectedPlayer.totalScore || 0,
+        message: `${disconnectedPlayer.name} maçtan kaçtı! Hükmen Galip İlan Edildin! 🎉`,
       });
     }
   }
@@ -1852,7 +1895,7 @@ class PartyRoom {
         artworkUrl: q.artworkUrl,
         promptText: q.promptText,
         options: q.options,
-        correctIndex: q.correctIndex,
+        correctIndex: -1, // Server-Authoritative Anti-Cheat
       },
       players: this.getPlayersData(),
     };
@@ -2049,6 +2092,15 @@ wss.on('connection', (ws) => {
       }
 
       if (type === 'join_queue') {
+        const cooldownSec = checkPlayerCooldown(player);
+        if (cooldownSec > 0) {
+          player.send({
+            type: 'cooldown_penalty',
+            remainingSec: cooldownSec,
+            message: `Sık sık maç terk ettiğiniz için ${Math.ceil(cooldownSec / 60)} dakika boyunca yeni maça giremezsiniz.`
+          });
+          return;
+        }
         player.name = data.playerName || 'Oyuncu';
         player.avatar = data.avatar || '🎧';
         player.title = data.title || 'Çaylak Dinleyici';
@@ -2111,7 +2163,15 @@ wss.on('connection', (ws) => {
             }
           }, botWaitMs);
         }
-      } else if (type === 'create_custom_room') {
+      } else if (type === 'forfeit_duel') {
+        if (player.room) {
+          player.room.handleDisconnect(player);
+          activeRooms.delete(player.id);
+        }
+        return;
+      }
+
+      if (type === 'create_custom_room') {
         player.name = data.playerName || 'Oda Kurucu';
         player.avatar = data.avatar || '👑';
         player.platform = data.platform || 'Mobil';

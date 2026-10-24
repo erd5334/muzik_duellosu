@@ -10,6 +10,7 @@ import 'screens/arena_screen.dart';
 import 'screens/match_result_screen.dart';
 import 'screens/party_lobby_screen.dart';
 import 'screens/party_podium_screen.dart';
+import 'screens/forfeit_victory_screen.dart';
 
 import 'services/ad_service.dart';
 
@@ -91,6 +92,9 @@ class MainNavigator extends StatelessWidget {
 
       case GameStatus.matchOver:
         return const MatchResultScreen();
+
+      case GameStatus.opponentForfeited:
+        return const ForfeitVictoryScreen();
 
       case GameStatus.idle:
       case GameStatus.error:

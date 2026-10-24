@@ -33,6 +33,7 @@ enum GameStatus {
   matchOver,
   partyLobby, // 👥 Çok Kişilik Parti Lobisi
   partyPodium, // 🏆 Parti Sonu Podyum Ekranı
+  opponentForfeited, // 🏃💨 Rakip Kaçtı / Hükmen Galibiyet
   error,
 }
 
@@ -176,6 +177,16 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   String? get googleUserId => _googleUserId;
   String? _googleUserEmail;
   String? get googleUserEmail => _googleUserEmail;
+
+  // Hükmen Galibiyet & Terk / Cooldown Sistemi (FAZ 3)
+  Map<String, dynamic>? _forfeitCelebrationData;
+  Map<String, dynamic>? get forfeitCelebrationData => _forfeitCelebrationData;
+  int _cooldownUntil = 0;
+  int get cooldownUntil => _cooldownUntil;
+  bool get isUnderCooldown => _cooldownUntil > DateTime.now().millisecondsSinceEpoch;
+  int get cooldownRemainingSeconds => isUnderCooldown
+      ? ((_cooldownUntil - DateTime.now().millisecondsSinceEpoch) / 1000).ceil()
+      : 0;
 
   // Ekonomi & Enerji Sistemi
   int _energy = 10;
@@ -395,6 +406,8 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         _selectedTitle = savedTitle;
       }
 
+      _cooldownUntil = prefs.getInt('user_cooldown_until') ?? 0;
+
       final badgesJson = prefs.getString('user_badges_data');
       if (badgesJson != null && badgesJson.isNotEmpty) {
         try {
@@ -606,6 +619,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       await prefs.setString('user_player_name', _customPlayerName);
       await prefs.setString('user_player_avatar', _customAvatar);
       await prefs.setString('user_selected_title', _selectedTitle);
+      await prefs.setInt('user_cooldown_until', _cooldownUntil);
       await prefs.setString('user_player_stats', jsonEncode(_playerStats.toJson()));
       await prefs.setString('user_season_pass_data', jsonEncode(_seasonPass.toJson()));
       if (_googleUserId != null) await prefs.setString('user_google_id', _googleUserId!);
@@ -1460,6 +1474,14 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   /// 1. Genel Rastgele Eşleşme (Standart 5 Tur) - Rakip Bulununca 1 Enerji Tüketir
   Future<void> startDuel(MusicCategory category) async {
+    if (isUnderCooldown) {
+      final mins = (cooldownRemainingSeconds / 60).ceil();
+      _errorMessage = '⏳ Düello Cezası: Sık sık maç terk ettiğiniz için $mins dakika boyunca yeni maça giremezsiniz.';
+      _status = GameStatus.error;
+      notifyListeners();
+      return;
+    }
+
     if (_energy < 1) {
       _errorMessage = '⚡ Enerjin tükendi! Reklam izleyerek enerji kazanabilir veya mağazayı ziyaret edebilirsin.';
       _status = GameStatus.error;
@@ -1980,6 +2002,50 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
           notifyListeners();
           break;
 
+        case 'opponent_forfeit':
+          _countdownTimer?.cancel();
+          _botAnswerTimer?.cancel();
+          await _audioPlayer.stop();
+
+          final trophiesWon = data['trophiesWon'] as int? ?? 30;
+          final coinsWon = data['coinsWon'] as int? ?? 50;
+          final xpWon = data['xpWon'] as int? ?? 100;
+          final leaverName = data['leaverName'] as String? ?? 'Rakip';
+
+          _coins += coinsWon;
+          addTrophies(trophiesWon);
+          addSeasonPassXp(xpWon);
+
+          if (_selectedCategory != null) {
+            _playerStats.recordMatchResult(
+              categoryId: _selectedCategory!.id,
+              isWinner: true,
+              isDraw: false,
+              matchScore: _userTotalScore > 0 ? _userTotalScore : 1000,
+            );
+          }
+
+          _forfeitCelebrationData = {
+            'leaverName': leaverName,
+            'trophiesWon': trophiesWon,
+            'coinsWon': coinsWon,
+            'xpWon': xpWon,
+          };
+          _status = GameStatus.opponentForfeited;
+          _saveUserData();
+          notifyListeners();
+          break;
+
+        case 'cooldown_penalty':
+          final remainingSec = data['remainingSec'] as int? ?? 300;
+          _cooldownUntil = DateTime.now().millisecondsSinceEpoch + (remainingSec * 1000);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('user_cooldown_until', _cooldownUntil);
+          _errorMessage = data['message'] as String? ?? 'Sık maç terk etme cezası uygulandı.';
+          _status = GameStatus.error;
+          notifyListeners();
+          break;
+
         case 'error_message':
         case 'opponent_disconnected':
           _errorMessage = data['message'] as String? ?? 'Bağlantı kesildi.';
@@ -2435,6 +2501,58 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       currentUserTrophies: curTrophies,
       currentUserRank: currentUser.rank,
     );
+  }
+
+  /// 🛑 Aktif Düelloyu Terk Etme (Hükmen Mağlubiyet & Ceza)
+  Future<void> forfeitActiveDuel() async {
+    try {
+      _wsChannel?.sink.add(jsonEncode({
+        'type': 'forfeit_duel',
+        'googleId': _googleUserId,
+      }));
+    } catch (_) {}
+
+    // 1. Karnede mağlubiyet
+    if (_selectedCategory != null) {
+      _playerStats.recordMatchResult(
+        categoryId: _selectedCategory!.id,
+        isWinner: false,
+        isDraw: false,
+        matchScore: _userTotalScore,
+      );
+    }
+
+    // 2. Kupa düşüşü (-20 Kupa)
+    addTrophies(-20);
+
+    // 3. Terk geçmişini kaydet (Cooldown/Ceza hesabı)
+    await _recordClientForfeitIncident();
+
+    // 4. Ana menüye dön
+    resetToHome();
+  }
+
+  Future<void> _recordClientForfeitIncident() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final rawList = prefs.getStringList('forfeit_timestamps') ?? [];
+      final oneHourAgo = now - (60 * 60 * 1000);
+      final validTimestamps = rawList
+          .map((s) => int.tryParse(s) ?? 0)
+          .where((t) => t > oneHourAgo)
+          .toList();
+
+      validTimestamps.add(now);
+      await prefs.setStringList('forfeit_timestamps', validTimestamps.map((t) => t.toString()).toList());
+
+      // 1 saatte 3 ve daha fazla terk yaparsa 5 dakika ceza
+      if (validTimestamps.length >= 3) {
+        _cooldownUntil = now + (5 * 60 * 1000); // 5 dakika
+        await prefs.setInt('user_cooldown_until', _cooldownUntil);
+        notifyListeners();
+      }
+    } catch (_) {}
   }
 
   void resetToHome() {
