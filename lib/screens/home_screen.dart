@@ -1078,24 +1078,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      // 1. Satır: Kategori Başlığı (Tam genişlik - Asla kesilmez)
+                      Text(
+                        cat.title,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+
+                      // 2. Satır: Alt Açıklama ve Plak / Başarı Rozetleri
                       Row(
                         children: [
                           Expanded(
                             child: Text(
-                              cat.title,
+                              cat.subtitle,
                               style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary,
-                                letterSpacing: -0.2,
+                                fontSize: 11.5,
+                                color: AppTheme.textSecondary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Kategori Plak İlerlemesi (Örn: 0/17 veya 7 Parça)
+
+                          // Kategori Plak İlerlemesi ve Başarı Rozetleri
                           Builder(
                             builder: (context) {
                               final catBadges = (cat.id == 'karma_all')
@@ -1123,7 +1138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         );
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: hasUnlocked
                                               ? AppTheme.amber.withValues(alpha: 0.15)
@@ -1139,11 +1154,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Text('💿', style: TextStyle(fontSize: 10)),
-                                            const SizedBox(width: 4),
+                                            const SizedBox(width: 3),
                                             Text(
                                               '$unlockedCount/$totalCount',
                                               style: TextStyle(
-                                                fontSize: 11,
+                                                fontSize: 10.5,
                                                 fontWeight: FontWeight.w700,
                                                 color: hasUnlocked ? AppTheme.amber : AppTheme.textMuted,
                                               ),
@@ -1154,7 +1169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ),
                                   if (cStats != null && cStats.matches > 0) ...[
-                                    const SizedBox(width: 6),
+                                    const SizedBox(width: 5),
                                     Material(
                                       color: Colors.transparent,
                                       child: InkWell(
@@ -1166,7 +1181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           );
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(8),
@@ -1175,12 +1190,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.insights_rounded, size: 10, color: Color(0xFF38BDF8)),
-                                              const SizedBox(width: 3),
+                                              const Icon(Icons.insights_rounded, size: 9, color: Color(0xFF38BDF8)),
+                                              const SizedBox(width: 2),
                                               Text(
-                                                '%${cStats.winRate.toStringAsFixed(0)} (${cStats.wins}G)',
+                                                '%${cStats.winRate.toStringAsFixed(0)}',
                                                 style: const TextStyle(
-                                                  fontSize: 11,
+                                                  fontSize: 10.5,
                                                   fontWeight: FontWeight.w700,
                                                   color: Color(0xFF38BDF8),
                                                 ),
@@ -1197,20 +1212,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        cat.subtitle,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
                   ),
                 ),
-
                 const SizedBox(width: 8),
                 const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
               ],

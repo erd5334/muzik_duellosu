@@ -74,15 +74,15 @@ class ArenaScreen extends StatelessWidget {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isLandscapeOrShort = constraints.maxHeight < 640 || constraints.maxWidth > constraints.maxHeight * 1.15;
+            final isLandscape = constraints.maxWidth > constraints.maxHeight;
 
             return Column(
               children: [
-                // 1. Üst Skor & Karşılaşma Barı
+                // 1. Üst Skor & Karşılaşma Barı (Responsive 3-Parçalı Yerleşim)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppTheme.surface,
                       borderRadius: BorderRadius.circular(16),
@@ -90,21 +90,29 @@ class ArenaScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        _buildPlayerBadge(
-                          name: game.playerName,
-                          avatar: game.playerAvatar,
-                          score: game.userTotalScore,
-                          isLeft: true,
-                          title: game.selectedTitle,
-                          statusText: userStatus,
-                          statusColor: userStatusColor,
-                        ),
+                        // Sol Oyuncu (Flex 5 - Asla ortaya taşamaz)
                         Expanded(
+                          flex: 5,
+                          child: _buildPlayerBadge(
+                            name: game.playerName,
+                            avatar: game.playerAvatar,
+                            score: game.userTotalScore,
+                            isLeft: true,
+                            title: game.selectedTitle,
+                            statusText: userStatus,
+                            statusColor: userStatusColor,
+                          ),
+                        ),
+
+                        // Orta Tur & Kombo Alanı (Sıkışamaz, sabit 82px)
+                        Container(
+                          width: 82,
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: AppTheme.surfaceLight,
                                   borderRadius: BorderRadius.circular(12),
@@ -113,73 +121,64 @@ class ArenaScreen extends StatelessWidget {
                                 child: Text(
                                   'TUR $roundNum / $totalRounds',
                                   style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
                                     color: AppTheme.amber,
-                                    letterSpacing: 0.8,
+                                    letterSpacing: 0.4,
                                   ),
+                                  maxLines: 1,
                                 ),
                               ),
                               if (game.currentMatchCombo >= 2) ...[
                                 const SizedBox(height: 3),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
                                       colors: [Color(0xFFEA580C), Color(0xFFEAB308)],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFFEA580C).withValues(alpha: 0.45),
-                                        blurRadius: 6,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text('🔥', style: TextStyle(fontSize: 10)),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        '${game.currentMatchCombo}x KOMBO (+${(game.comboMultiplierBonus * 100).toInt()}%)',
-                                        style: const TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    '🔥 ${game.currentMatchCombo}x',
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               WaveformVisualizer(
                                 isPlaying: game.isAudioPlaying,
-                                barCount: 7,
-                                height: 14,
+                                barCount: 5,
+                                height: 12,
                               ),
                             ],
                           ),
                         ),
-                        if (game.isPartyMode)
-                          _buildPartyHeaderWidget(game)
-                        else
-                          _buildPlayerBadge(
-                            name: opponent?.name ?? 'Rakip',
-                            avatar: opponent?.avatar ?? '🎸',
-                            score: game.opponentTotalScore,
-                            isLeft: false,
-                            title: opponent?.title,
-                            statusText: oppStatus,
-                            statusColor: oppStatusColor,
-                          ),
+
+                        // Sağ Oyuncu (Flex 5 - Asla ortaya taşamaz)
+                        Expanded(
+                          flex: 5,
+                          child: game.isPartyMode
+                              ? _buildPartyHeaderWidget(game)
+                              : _buildPlayerBadge(
+                                  name: opponent?.name ?? 'Rakip',
+                                  avatar: opponent?.avatar ?? '🎸',
+                                  score: game.opponentTotalScore,
+                                  isLeft: false,
+                                  title: opponent?.title,
+                                  statusText: oppStatus,
+                                  statusColor: oppStatusColor,
+                                ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-
                 // 2. Zaman Sayacı (Hız Çubuğu & Nabız/Tansiyon Efekti)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
@@ -236,7 +235,7 @@ class ArenaScreen extends StatelessWidget {
 
                 // 3. İçerik Alanı (Yatay veya Dikey Adaptif)
                 Expanded(
-                  child: isLandscapeOrShort
+                  child: isLandscape
                       ? _buildLandscapeLayout(context, game, question, constraints)
                       : _buildPortraitLayout(context, game, question, constraints),
                 ),
@@ -331,16 +330,21 @@ class ArenaScreen extends StatelessWidget {
     );
   }
 
-  /// Standart Telefonlar İçin Dikey Düzen
+  /// Standart ve Küçük Telefonlar İçin Adaptif Dikey Düzen
   Widget _buildPortraitLayout(
     BuildContext context,
     GameProvider game,
     dynamic question,
     BoxConstraints constraints,
   ) {
+    final isShortScreen = constraints.maxHeight < 680;
+    final vinylSize = isShortScreen
+        ? min(115.0, constraints.maxHeight * 0.20)
+        : min(150.0, constraints.maxHeight * 0.24);
+
     return Column(
       children: [
-        // Orta Alan: Plak & Soru
+        // Orta Alan: Plak & Soru / Doğru Şarkı Künyesi
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -350,35 +354,40 @@ class ArenaScreen extends StatelessWidget {
                 artworkUrl: (question.isAnswered || game.status == GameStatus.roundResult)
                     ? question.song.artworkUrl
                     : null,
-                size: min(150.0, constraints.maxHeight * 0.26),
+                size: vinylSize,
               ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceLight.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(20),
+              SizedBox(height: isShortScreen ? 8 : 12),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: isShortScreen ? 6 : 8,
                 ),
-                child: Text(
-                  question.promptText,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.2,
+                decoration: BoxDecoration(
+                  color: question.isAnswered
+                      ? AppTheme.emerald.withValues(alpha: 0.15)
+                      : AppTheme.surfaceLight.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: question.isAnswered
+                        ? AppTheme.emerald.withValues(alpha: 0.4)
+                        : Colors.transparent,
                   ),
                 ),
-              ),
-              if (question.isAnswered) ...[
-                const SizedBox(height: 6),
-                Text(
-                  '${question.song.title} • ${question.song.artist}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
+                child: Text(
+                  question.isAnswered
+                      ? '🎵 ${question.song.title} • ${question.song.artist}'
+                      : question.promptText,
+                  style: TextStyle(
+                    fontSize: isShortScreen ? 13 : 15,
+                    fontWeight: FontWeight.w700,
+                    color: question.isAnswered ? AppTheme.emerald : AppTheme.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -389,8 +398,8 @@ class ArenaScreen extends StatelessWidget {
           child: Column(
             children: List.generate(4, (index) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: _buildChoiceButton(game, question, index, isCompact: false),
+                padding: EdgeInsets.only(bottom: isShortScreen ? 5.0 : 8.0),
+                child: _buildChoiceButton(game, question, index, isCompact: isShortScreen),
               );
             }),
           ),
@@ -398,7 +407,7 @@ class ArenaScreen extends StatelessWidget {
 
         // Joker Butonu
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+          padding: EdgeInsets.fromLTRB(16, isShortScreen ? 0 : 2, 16, isShortScreen ? 4 : 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -582,6 +591,8 @@ class ArenaScreen extends StatelessWidget {
     Color? statusColor,
   }) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (isLeft) ...[
           CircleAvatar(
@@ -599,103 +610,99 @@ class ArenaScreen extends StatelessWidget {
                   )
                 : Text(avatar, style: const TextStyle(fontSize: 16)),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 7),
         ],
-        Column(
-          crossAxisAlignment: isLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isLeft && title != null && title.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppTheme.amber.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      title,
-                      style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppTheme.amber),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  name,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: isLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. Satır: İsim
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
                 ),
-                if (isLeft && title != null && title.isNotEmpty) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppTheme.amber.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      title,
-                      style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppTheme.amber),
-                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              // 2. Satır: Unvan (Altında yer alır - asla yatayda çakışmaz!)
+              if (title != null && title.isNotEmpty) ...[
+                const SizedBox(height: 1.5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                ],
-              ],
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isLeft && statusText != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                    decoration: BoxDecoration(
-                      color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.4)),
-                    ),
-                    child: Text(
-                      statusText,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: statusColor ?? AppTheme.textMuted,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  score.toString(),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, color: AppTheme.amber),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (isLeft && statusText != null) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                    decoration: BoxDecoration(
-                      color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.4)),
-                    ),
-                    child: Text(
-                      statusText,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: statusColor ?? AppTheme.textMuted,
+              ],
+              const SizedBox(height: 2),
+              // 3. Satır: Skor ve Cevap Durumu
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isLeft && statusText != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          color: statusColor ?? AppTheme.textMuted,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    score.toString(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
+                  if (isLeft && statusText != null) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: (statusColor ?? AppTheme.textMuted).withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          color: statusColor ?? AppTheme.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
         if (!isLeft) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: 7),
           CircleAvatar(
             backgroundColor: AppTheme.surfaceLight,
             radius: 16,
