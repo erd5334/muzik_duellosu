@@ -130,6 +130,9 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
   int _coins = 350;
   int get coins => _coins;
 
+  int _jokerShards = 15; // Evrensel Joker Plak Parçası
+  int get jokerShards => _jokerShards;
+
   int _dailyAdsWatchedForEnergy = 0;
   int get dailyAdsWatchedForEnergy => _dailyAdsWatchedForEnergy;
   static const int maxDailyAdsForEnergy = 2;
@@ -278,6 +281,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       _coins = prefs.getInt('user_coins') ?? _coins;
+      _jokerShards = prefs.getInt('user_joker_shards') ?? _jokerShards;
       _energy = prefs.getInt('user_energy') ?? _energy;
       _hasNoAds = prefs.getBool('user_has_no_ads') ?? _hasNoAds;
       _isVip = prefs.getBool('user_is_vip') ?? _isVip;
@@ -503,6 +507,7 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('user_coins', _coins);
+      await prefs.setInt('user_joker_shards', _jokerShards);
       await prefs.setInt('user_energy', _energy);
       await prefs.setInt('last_energy_timestamp', _lastEnergyTimestamp);
       await prefs.setBool('user_has_no_ads', _hasNoAds);
@@ -639,6 +644,10 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
         if (targetBadge.currentShards >= targetBadge.totalShardsRequired) {
           targetBadge.isUnlocked = true;
         }
+      } else {
+        // Tüm kilitli rozetler açılmışsa parçalar boşa gitmez, Joker Plak Parçasına dönüşür!
+        _jokerShards += earnedShards;
+        _lastRewardedBadgeName = '✨ $earnedShards Joker Parça';
       }
     }
 
@@ -770,6 +779,8 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
           final b = locked[Random().nextInt(locked.length)];
           b.currentShards = min(b.totalShardsRequired, b.currentShards + reward.amount);
           if (b.currentShards >= b.totalShardsRequired) b.isUnlocked = true;
+        } else {
+          _jokerShards += reward.amount;
         }
         break;
       case RewardType.endlessChest:
@@ -987,6 +998,53 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
       return true;
     }
     return false;
+  }
+
+  /// Kilitli Plak Rozetine Joker Parçası Basma
+  bool useJokerShardsOnBadge(String badgeId, int count) {
+    if (count <= 0 || _jokerShards < count) return false;
+    final badge = _badges.where((b) => b.id == badgeId).firstOrNull;
+    if (badge == null || badge.isUnlocked) return false;
+
+    final toUse = min(count, badge.remainingShards);
+    if (toUse <= 0) return false;
+
+    _jokerShards -= toUse;
+    badge.currentShards += toUse;
+    if (badge.currentShards >= badge.totalShardsRequired) {
+      badge.isUnlocked = true;
+    }
+    _saveUserData();
+    notifyListeners();
+    return true;
+  }
+
+  /// Altın Karşılığı Joker Parçası Dönüştürme
+  bool convertCoinsToJokerShards(int coinCost, int shardGain) {
+    if (_coins < coinCost || coinCost <= 0 || shardGain <= 0) return false;
+    _coins -= coinCost;
+    _jokerShards += shardGain;
+    _saveUserData();
+    notifyListeners();
+    return true;
+  }
+
+  /// Fazlalık Plak Parçalarını Joker Parçaya Dönüştürme
+  int convertExcessBadgeShards() {
+    int totalExcess = 0;
+    for (final badge in _badges) {
+      if (badge.isUnlocked && badge.currentShards > badge.totalShardsRequired) {
+        final excess = badge.currentShards - badge.totalShardsRequired;
+        totalExcess += excess;
+        badge.currentShards = badge.totalShardsRequired;
+      }
+    }
+    if (totalExcess > 0) {
+      _jokerShards += totalExcess;
+      _saveUserData();
+      notifyListeners();
+    }
+    return totalExcess;
   }
 
   void equipBadge(String badgeId) {

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/collection_badge.dart';
@@ -103,6 +104,32 @@ class _CollectionDialogState extends State<CollectionDialog> {
                                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.amber),
                               ),
                             ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => _showShardConverterSheet(context, game),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)]),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3), blurRadius: 4),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Text('✨', style: TextStyle(fontSize: 11)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${game.jokerShards}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.add_circle, color: Colors.white70, size: 13),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -288,10 +315,57 @@ class _CollectionDialogState extends State<CollectionDialog> {
             ),
             const SizedBox(height: 12),
 
-            // EKSİĞİ TAMAMLA BUTONU (Pay-to-Complete)
+            // PARÇA DOLDURMA BUTONLARI (Joker Parça & Altın)
             Row(
               children: [
+                // 1. Joker Parça Butonu
                 Expanded(
+                  flex: 5,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      if (game.jokerShards > 0) {
+                        final toUse = min(game.jokerShards, badge.remainingShards);
+                        final success = game.useJokerShardsOnBadge(badge.id, toUse);
+                        if (success) {
+                          if (badge.isUnlocked) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: AppTheme.emerald,
+                                content: Text('🎉 ${badge.artistName} Plak Rozeti açıldı!'),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: const Color(0xFF8B5CF6),
+                                content: Text('✨ $toUse Joker Parça basıldı! Kalan: ${badge.remainingShards}'),
+                              ),
+                            );
+                          }
+                        }
+                      } else {
+                        _showShardConverterSheet(context, game);
+                      }
+                    },
+                    icon: const Text('✨', style: TextStyle(fontSize: 14)),
+                    label: Text(
+                      game.jokerShards > 0
+                          ? 'Joker Bas (${min(game.jokerShards, badge.remainingShards)})'
+                          : 'Joker Parça Al',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF8B5CF6)),
+                      backgroundColor: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 2. Altın ile Tamamla Butonu
+                Expanded(
+                  flex: 5,
                   child: OutlinedButton.icon(
                     onPressed: () {
                       final success = game.buyMissingShards(badge.id, costToComplete);
@@ -307,7 +381,7 @@ class _CollectionDialogState extends State<CollectionDialog> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             backgroundColor: AppTheme.crimson,
-                            content: Text('$needed Altın eksik! Mağazadan altın yükleyebilirsin.'),
+                            content: Text('$needed Altın eksik!'),
                             action: SnackBarAction(
                               label: 'MAĞAZA',
                               textColor: AppTheme.amber,
@@ -319,15 +393,15 @@ class _CollectionDialogState extends State<CollectionDialog> {
                         );
                       }
                     },
-                    icon: const Icon(Icons.bolt_rounded, size: 16, color: AppTheme.amber),
+                    icon: const Text('🪙', style: TextStyle(fontSize: 12)),
                     label: Text(
-                      'Eksik ${badge.remainingShards} Parçayı Tamamla ($costToComplete 🪙)',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
+                      'Tamamla ($costToComplete)',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppTheme.amber),
                       backgroundColor: AppTheme.amber.withValues(alpha: 0.1),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
@@ -405,6 +479,273 @@ class _CollectionDialogState extends State<CollectionDialog> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  void _showShardConverterSheet(BuildContext context, GameProvider game) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: AppTheme.border, width: 1.5),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(22.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Başlık & Kapat
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)]),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text('✨', style: TextStyle(fontSize: 18)),
+                          ),
+                          const SizedBox(width: 10),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Joker Parça Atölyesi',
+                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white),
+                              ),
+                              Text(
+                                'Her plağa uyumlu evrensel parçalar',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Bakiye Bilgisi
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceLight,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Mevcut Joker Parçan:',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                        ),
+                        Row(
+                          children: [
+                            const Text('✨', style: TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${game.jokerShards} Parça',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFFA78BFA)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  const Text(
+                    '🪙 Altın ile Joker Parça Üret',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.amber),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Paketler
+                  Row(
+                    children: [
+                      _buildConverterOption(
+                        title: '1 Parça',
+                        cost: 100,
+                        gain: 1,
+                        game: game,
+                        onSuccess: () => setModalState(() {}),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildConverterOption(
+                        title: '5 Parça',
+                        badgeText: '-%10',
+                        cost: 450,
+                        gain: 5,
+                        game: game,
+                        onSuccess: () => setModalState(() {}),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildConverterOption(
+                        title: '10 Parça',
+                        badgeText: '-%20',
+                        cost: 800,
+                        gain: 10,
+                        game: game,
+                        onSuccess: () => setModalState(() {}),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Fazla Parçaları Tara & Dönüştür
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceLight,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Text('♻️', style: TextStyle(fontSize: 15)),
+                            SizedBox(width: 8),
+                            Text(
+                              'Fazlalık Parçaları Kurtar',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Koleksiyonu tamamlanan plaklardaki fazlalık parçalar boşa gitmez, Joker Parçaya dönüştürülür.',
+                          style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final converted = game.convertExcessBadgeShards();
+                              setModalState(() {});
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: converted > 0 ? AppTheme.emerald : AppTheme.surfaceLight,
+                                  content: Text(
+                                    converted > 0
+                                        ? '✨ $converted adet fazlalık parça Joker Parçaya dönüştürüldü!'
+                                        : 'Tüm plak parçalarınız dengede, fazlalık bulunmuyor.',
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.recycling_rounded, size: 16),
+                            label: const Text('Fazla Parçaları Tara & Dönüştür', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6D28D9),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildConverterOption({
+    required String title,
+    String? badgeText,
+    required int cost,
+    required int gain,
+    required GameProvider game,
+    required VoidCallback onSuccess,
+  }) {
+    final canAfford = game.coins >= cost;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (canAfford) {
+            final ok = game.convertCoinsToJokerShards(cost, gain);
+            if (ok) {
+              onSuccess();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: const Color(0xFF8B5CF6),
+                  content: Text('✨ +$gain Joker Plak Parçası üretildi!'),
+                ),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: AppTheme.crimson,
+                content: Text('Yeterli altınınız yok!'),
+              ),
+            );
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: canAfford ? const Color(0xFF8B5CF6).withValues(alpha: 0.12) : AppTheme.surfaceLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: canAfford ? const Color(0xFF8B5CF6).withValues(alpha: 0.5) : AppTheme.border,
+            ),
+          ),
+          child: Column(
+            children: [
+              if (badgeText != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.crimson,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white),
+                  ),
+                ),
+              Text(
+                '✨ $title',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$cost 🪙',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: canAfford ? AppTheme.amber : AppTheme.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
