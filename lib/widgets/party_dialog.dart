@@ -47,21 +47,24 @@ class _PartyDialogState extends State<PartyDialog> with SingleTickerProviderStat
     final game = context.watch<GameProvider>();
     final categories = game.categories;
 
-    return Container(
-      padding: EdgeInsets.only(
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border(top: BorderSide(color: AppTheme.border)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Container(
+        padding: EdgeInsets.only(
+          top: 20,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        decoration: const BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: AppTheme.border)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           // Drag handle
           Container(
             width: 44,
@@ -150,10 +153,11 @@ class _PartyDialogState extends State<PartyDialog> with SingleTickerProviderStat
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildCreateRoomTab(List<MusicCategory> categories, GameProvider game) {
+Widget _buildCreateRoomTab(List<MusicCategory> categories, GameProvider game) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,6 +301,7 @@ class _PartyDialogState extends State<PartyDialog> with SingleTickerProviderStat
           child: TextField(
             controller: _pinController,
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
             textAlign: TextAlign.center,
             maxLength: 4,
             style: const TextStyle(
@@ -306,6 +311,19 @@ class _PartyDialogState extends State<PartyDialog> with SingleTickerProviderStat
               color: AppTheme.amber,
             ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onTapOutside: (_) => FocusScope.of(context).unfocus(),
+            onChanged: (val) {
+              if (val.trim().length == 4) {
+                FocusScope.of(context).unfocus();
+              }
+            },
+            onSubmitted: (code) {
+              FocusScope.of(context).unfocus();
+              if (code.trim().length == 4) {
+                Navigator.pop(context);
+                game.joinPartyRoom(code.trim());
+              }
+            },
             decoration: InputDecoration(
               counterText: '',
               hintText: '0000',
@@ -334,6 +352,7 @@ class _PartyDialogState extends State<PartyDialog> with SingleTickerProviderStat
           height: 48,
           child: ElevatedButton.icon(
             onPressed: () {
+              FocusScope.of(context).unfocus();
               final code = _pinController.text.trim();
               if (code.length == 4) {
                 Navigator.pop(context);

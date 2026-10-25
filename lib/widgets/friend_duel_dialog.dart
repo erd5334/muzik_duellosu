@@ -49,11 +49,14 @@ class _FriendDuelDialogState extends State<FriendDuelDialog> with SingleTickerPr
         side: const BorderSide(color: AppTheme.border, width: 1.5),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             // Başlık
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -240,9 +243,23 @@ class _FriendDuelDialogState extends State<FriendDuelDialog> with SingleTickerPr
                         child: TextField(
                           controller: _codeController,
                           keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.done,
                           maxLength: 4,
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 8, color: Colors.white),
+                          onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                          onChanged: (val) {
+                            if (val.trim().length == 4) {
+                              FocusScope.of(context).unfocus();
+                            }
+                          },
+                          onSubmitted: (code) {
+                            FocusScope.of(context).unfocus();
+                            if (code.trim().length == 4) {
+                              Navigator.pop(context);
+                              game.joinCustomRoom(code.trim());
+                            }
+                          },
                           decoration: const InputDecoration(
                             counterText: '',
                             hintText: '4821',
@@ -256,6 +273,7 @@ class _FriendDuelDialogState extends State<FriendDuelDialog> with SingleTickerPr
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
+                            FocusScope.of(context).unfocus();
                             final code = _codeController.text.trim();
                             if (code.length == 4) {
                               Navigator.pop(context);
@@ -283,7 +301,8 @@ class _FriendDuelDialogState extends State<FriendDuelDialog> with SingleTickerPr
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildDurationOption(int duration, String label) {
