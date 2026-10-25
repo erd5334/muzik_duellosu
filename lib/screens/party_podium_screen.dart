@@ -149,9 +149,12 @@ class PartyPodiumScreen extends StatelessWidget {
             ),
           ),
         ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        bottomNavigationBar: Container(
+          color: AppTheme.surface,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
             child: SizedBox(
               width: double.infinity,
               height: 48,
@@ -168,6 +171,7 @@ class PartyPodiumScreen extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
         ),
       ),

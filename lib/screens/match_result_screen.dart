@@ -159,14 +159,16 @@ class _MatchResultScreenState extends State<MatchResultScreen> {
           },
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppTheme.surface.withValues(alpha: 0.95),
-            border: const Border(top: BorderSide(color: AppTheme.borderSubtle)),
-          ),
-          child: Row(
+      bottomNavigationBar: Container(
+        color: AppTheme.surface,
+        child: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppTheme.borderSubtle)),
+            ),
+            child: Row(
             children: [
               Expanded(
                 child: OutlinedButton(
@@ -223,8 +225,9 @@ class _MatchResultScreenState extends State<MatchResultScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildScoreCard(GameProvider game, bool isWinner, bool isDraw) {
     return Container(

@@ -209,7 +209,7 @@ class _ForfeitVictoryScreenState extends State<ForfeitVictoryScreen> with Single
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 14 + MediaQuery.of(context).padding.bottom),
             ],
           ),
         ),

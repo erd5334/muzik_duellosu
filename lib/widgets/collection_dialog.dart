@@ -65,9 +65,9 @@ class _CollectionDialogState extends State<CollectionDialog> {
         borderRadius: BorderRadius.circular(24),
         side: const BorderSide(color: AppTheme.border, width: 1.5),
       ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      insetPadding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480, maxHeight: 680),
+        constraints: BoxConstraints(maxWidth: 480, maxHeight: MediaQuery.of(context).size.height * 0.85),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: DefaultTabController(

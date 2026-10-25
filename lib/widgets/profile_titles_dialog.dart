@@ -662,9 +662,13 @@ class _ProfileTitlesDialogState extends State<ProfileTitlesDialog> with SingleTi
           const SizedBox(height: 16),
 
           // Değişiklikleri Kaydet Butonu
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
               onPressed: () {
                 final newName = _nameController.text.trim();
                 if (newName.isNotEmpty) {
@@ -689,6 +693,8 @@ class _ProfileTitlesDialogState extends State<ProfileTitlesDialog> with SingleTi
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
               ),
             ),
+          ),
+          ),
           ),
         ],
       ),
