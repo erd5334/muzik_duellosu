@@ -323,6 +323,147 @@
     </div>
   </div>
 
+  
+      <!-- 7. SİSTEM, BOT VE DUYURU YÖNETİMİ -->
+      <div id="tab-system" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div>
+            <h3 style="font-size:18px; font-weight:800; margin:0;">⚙️ Sistem, Bot & Duyuru Yönetim Merkezi</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Yapay zeka zorluğunu, zorunlu güncellemeyi ve açılış duyurularını tek tıkla canlı olarak yönetin.</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadSystemSettings()">🔄 Yenile</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
+          
+          <!-- 1. YAPAY ZEKA & BOT AYARLARI -->
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+              <span style="font-size:24px;">🤖</span>
+              <div>
+                <h4 style="font-size:15px; font-weight:800; margin:0;">Yapay Zeka & Bot Zorluğu</h4>
+                <p style="font-size:11px; color:var(--text-muted); margin:2px 0 0 0;">Düellolardaki botların cevap hızı ve bilme oranını ayarlar.</p>
+              </div>
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">Ön Tanımlı Zorluk Seviyesi</label>
+              <select id="bot-difficulty" onchange="onBotDifficultyChange()" style="width:100%; padding:8px 12px; border-radius:10px; background:var(--surface-light); color:#fff; border:1px solid var(--border);">
+                <option value="easy">🟢 Kolay (%55 Doğruluk, 3.5 - 6.5 sn gecikme)</option>
+                <option value="medium">🟡 Orta (%75 Doğruluk, 2.2 - 4.8 sn gecikme)</option>
+                <option value="hard">🔴 Zor (%92 Doğruluk, 1.2 - 2.8 sn gecikme)</option>
+                <option value="custom">⚙️ Özel Ayar (Manuel Sliderlar)</option>
+              </select>
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:6px;">
+                <span>Bot Doğruluk Oranı (%)</span>
+                <span id="bot-accuracy-val" style="color:var(--amber);">%75</span>
+              </div>
+              <input type="range" id="bot-accuracy" min="40" max="100" value="75" oninput="document.getElementById('bot-accuracy-val').innerText = '%' + this.value; document.getElementById('bot-difficulty').value = 'custom';" style="width:100%;">
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:6px;">
+                <span>Minimum Cevap Süresi (sn)</span>
+                <span id="bot-min-delay-val" style="color:var(--amber);">2.2 sn</span>
+              </div>
+              <input type="range" id="bot-min-delay" min="1.0" max="5.0" step="0.2" value="2.2" oninput="document.getElementById('bot-min-delay-val').innerText = this.value + ' sn'; document.getElementById('bot-difficulty').value = 'custom';" style="width:100%;">
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:6px;">
+                <span>Maksimum Cevap Süresi (sn)</span>
+                <span id="bot-max-delay-val" style="color:var(--amber);">4.8 sn</span>
+              </div>
+              <input type="range" id="bot-max-delay" min="2.0" max="8.0" step="0.2" value="4.8" oninput="document.getElementById('bot-max-delay-val').innerText = this.value + ' sn'; document.getElementById('bot-difficulty').value = 'custom';" style="width:100%;">
+            </div>
+
+            <button class="btn" style="width:100%;" onclick="saveBotSettings()">💾 Bot Ayarlarını Kaydet</button>
+          </div>
+
+          <!-- 2. ZORUNLU GÜNCELLEME (FORCE UPDATE) -->
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+              <span style="font-size:24px;">📲</span>
+              <div>
+                <h4 style="font-size:15px; font-weight:800; margin:0;">Zorunlu Güncelleme (Force Update)</h4>
+                <p style="font-size:11px; color:var(--text-muted); margin:2px 0 0 0;">Eski sürüm kullananları markete yönlendirir.</p>
+              </div>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding:10px 14px; background:var(--surface-light); border-radius:10px;">
+              <span style="font-size:13px; font-weight:700;">Zorunlu Güncelleme Aktif</span>
+              <input type="checkbox" id="update-force-active" style="width:20px; height:20px;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Minimum Sürüm</label>
+                <input type="text" id="update-min-version" value="1.0.8" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--surface-light); color:#fff; border:1px solid var(--border);">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">En Son Sürüm</label>
+                <input type="text" id="update-latest-version" value="1.0.8" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--surface-light); color:#fff; border:1px solid var(--border);">
+              </div>
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Güncelleme Başlığı</label>
+              <input type="text" id="update-title" value="Yeni Güncelleme Mevcut! 🚀" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--surface-light); color:#fff; border:1px solid var(--border);">
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Güncelleme Mesajı</label>
+              <textarea id="update-message" rows="3" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--surface-light); color:#fff; border:1px solid var(--border); font-family:inherit; font-size:12px;">Daha iyi bir müzik deneyimi ve yeni özellikler için lütfen Sahne Senin'i güncelleyin.</textarea>
+            </div>
+
+            <button class="btn" style="width:100%;" onclick="saveUpdateSettings()">💾 Güncelleme Ayarlarını Kaydet</button>
+          </div>
+
+          <!-- 3. AÇILIŞ DUYURU MODU -->
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+              <span style="font-size:24px;">📢</span>
+              <div>
+                <h4 style="font-size:15px; font-weight:800; margin:0;">Açılış Duyuru / Bildirim Modu</h4>
+                <p style="font-size:11px; color:var(--text-muted); margin:2px 0 0 0;">Oyuncular açılışta okur, 'Okudum' deyince bir daha görmez.</p>
+              </div>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding:10px 14px; background:var(--surface-light); border-radius:10px;">
+              <span style="font-size:13px; font-weight:700;">Duyuru Aktif (Canlı)</span>
+              <input type="checkbox" id="ann-enabled" style="width:20px; height:20px;">
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Duyuru Başlığı</label>
+              <input type="text" id="ann-title" placeholder="Örn: 1. Sezon Ödülleri Dağıtıldı!" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--surface-light); color:#fff; border:1px solid var(--border);">
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Duyuru İçeriği</label>
+              <textarea id="ann-message" rows="3" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--surface-light); color:#fff; border:1px solid var(--border); font-family:inherit; font-size:12px;" placeholder="Oyunculara iletmek istediğiniz metin..."></textarea>
+            </div>
+
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px;">
+              <div style="flex:1;">
+                <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Duyuru ID</label>
+                <input type="text" id="ann-id" readonly style="width:100%; padding:6px 10px; border-radius:8px; background:#111; color:var(--amber); border:1px solid var(--border); font-size:11px; font-family:monospace;">
+              </div>
+              <div style="margin-top:16px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="renewAnnouncementId()" title="Yeni ID üretir, böylece önceden okumuş olanlar dahil herkese tekrar gösterilir!">🔄 Yenile</button>
+              </div>
+            </div>
+
+            <button class="btn" style="width:100%;" onclick="saveAnnouncementSettings()">💾 Duyuruyu Yayına Al</button>
+          </div>
+
+        </div>
+      </div>
+
+
   <!-- PLAK EKLE/DÜZENLE MODAL -->
   <div class="modal-overlay" id="badge-modal">
     <div class="modal-content">
