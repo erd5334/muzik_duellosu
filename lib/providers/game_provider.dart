@@ -1613,6 +1613,19 @@ class GameProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Beklemeden yapay zekaya (bota) karşı oynamayı talep et
+  void requestBotMatch() {
+    if (_status != GameStatus.searchingOpponent) return;
+    try {
+      _wsChannel?.sink.add(jsonEncode({
+        'type': 'request_bot_match',
+        'category': _selectedCategory?.id ?? 'pop_90s',
+      }));
+    } catch (e) {
+      debugPrint('requestBotMatch error: $e');
+    }
+  }
+
   /// 2. Arkadaş İçin Özel Oda Kurma (Ayarlanabilir 5-20 Tur) - Enerji Ücretsizdir
   Future<void> createCustomRoom({
     required MusicCategory category,

@@ -253,6 +253,60 @@ function saveActiveSeasonPass(data) {
   }
 }
 
+
+function getAppSetting(key, defaultValue) {
+  if (!db) return defaultValue;
+  try {
+    const row = db.prepare('SELECT value_json FROM app_settings WHERE key = ?').get(key);
+    if (row && row.value_json) {
+      return JSON.parse(row.value_json);
+    }
+  } catch (e) {}
+  return defaultValue;
+}
+
+function setAppSetting(key, value) {
+  if (!db) return false;
+  const json = JSON.stringify(value);
+  try {
+    db.prepare(`
+      INSERT INTO app_settings (key, value_json, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at
+    `).run(key, json, Date.now());
+    return true;
+  } catch (e) {
+    console.error('setAppSetting error:', e);
+    return false;
+  }
+}
+
+const DEFAULT_BOT_SETTINGS = {
+  difficulty: 'medium',
+  accuracy: 0.75,
+  minDelayMs: 2200,
+  maxDelayMs: 4800,
+  matchWaitSec: 6
+};
+
+const DEFAULT_VERSION_SETTINGS = {
+  min_version: '1.0.8',
+  latest_version: '1.0.8',
+  force_update: false,
+  title: 'Yeni Güncelleme Mevcut! 🚀',
+  message: 'Daha iyi bir müzik deneyimi ve yeni özellikler için lütfen Sahne Senin\'i güncelleyin.',
+  ios_url: 'https://apps.apple.com/app/id6738914624',
+  android_url: 'https://play.google.com/store/apps/details?id=com.eryazilimci.muzik_duellosu'
+};
+
+const DEFAULT_ANNOUNCEMENT_SETTINGS = {
+  enabled: false,
+  id: 'announcement_1',
+  title: 'Sahne Senin Duyurusu 📢',
+  message: 'Sahne Senin\'e hoş geldiniz! Yeni sezon ve yeni plak koleksiyonları sizleri bekliyor.',
+  button_text: 'Okudum, Anladım'
+};
+
 const CURATED_DAILY_SONGS = [
   { artist: 'Barış Manço', title: 'Gülpembe', artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bf/25/4b/bf254b04-f5f4-279c-7b3b-857e4e137a6b/cover.jpg/600x600bb.jpg', previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/4a/1c/b5/4a1cb5b9-1f48-a083-0975-f8b1e4277bbf/mzaf_7824883391851240366.plus.aac.p.m4a' },
   { artist: 'Tarkan', title: 'Kıl Oldum', artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/8e/3c/64/8e3c64c1-eebe-86a3-d02f-bfa4a6d2fdbd/cover.jpg/600x600bb.jpg', previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/a5/d2/97/a5d29792-50d4-8d96-c143-bf688f98ec4e/mzaf_16480579973216892556.plus.aac.p.m4a' },
@@ -267,6 +321,30 @@ const CURATED_DAILY_SONGS = [
 ];
 
 const DAILY_SONG_CACHE = {};
+
+function fetchItunesTrack(artist, title) {
+  return new Promise((resolve) => {
+    const q = encodeURIComponent((artist + ' ' + title).trim());
+    const url = 'https://itunes.apple.com/search?term=' + q + '&country=TR&media=music&entity=song&limit=1';
+    https.get(url, (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          if (j.results && j.results.length > 0 && j.results[0].previewUrl) {
+            resolve({
+              previewUrl: j.results[0].previewUrl,
+              artworkUrl: (j.results[0].artworkUrl100 || '').replace('100x100bb', '600x600bb')
+            });
+          } else {
+            resolve(null);
+          }
+        } catch (_) { resolve(null); }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
 
 function fetchDeezerTrack(artist, title) {
   return new Promise((resolve) => {
@@ -306,7 +384,10 @@ async function getDailySongForDate(dateStr) {
   const searchPool = CURATED_DAILY_SONGS.map(s => s.artist + ' - ' + s.title);
 
   try {
-    const live = await fetchDeezerTrack(song.artist, song.title);
+    let live = await fetchItunesTrack(song.artist, song.title);
+    if (!live || !live.previewUrl) {
+      live = await fetchDeezerTrack(song.artist, song.title);
+    }
     if (live && live.previewUrl) {
       song.previewUrl = live.previewUrl;
       if (live.artworkUrl) song.artworkUrl = live.artworkUrl;
@@ -572,6 +653,11 @@ const DEFAULT_LEAGUE_CONFIG = {
 function getLeagueSettings() {
   if (!db) return DEFAULT_LEAGUE_CONFIG;
   try {
+    db.prepare(`CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value_json TEXT,
+      updated_at INTEGER
+    )`).run();
     db.prepare('CREATE TABLE IF NOT EXISTS league_settings (id TEXT PRIMARY KEY, data_json TEXT, updated_at INTEGER)').run();
     const row = db.prepare('SELECT data_json FROM league_settings WHERE id = ?').get('active_league');
     if (row && row.data_json) {
@@ -769,6 +855,52 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 2. Canlı Uygulama Konfigürasyonu (Kategoriler, Plaklar & Mağaza)
+  
+  // 2.2. Canlı Uygulama Konfigürasyonu (Sürüm & Duyuru)
+  if (req.method === 'GET' && req.url === '/api/app-config') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    const botCfg = getAppSetting('bot_settings', DEFAULT_BOT_SETTINGS);
+    res.end(JSON.stringify({
+      version: getAppSetting('version_settings', DEFAULT_VERSION_SETTINGS),
+      announcement: getAppSetting('announcement_settings', DEFAULT_ANNOUNCEMENT_SETTINGS),
+      bot: {
+        matchWaitSec: botCfg ? (botCfg.matchWaitSec || 6) : 6
+      }
+    }));
+    return;
+  }
+
+  // Admin Ayarları Getir
+  if (req.method === 'GET' && req.url === '/api/admin/settings') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      bot: getAppSetting('bot_settings', DEFAULT_BOT_SETTINGS),
+      version: getAppSetting('version_settings', DEFAULT_VERSION_SETTINGS),
+      announcement: getAppSetting('announcement_settings', DEFAULT_ANNOUNCEMENT_SETTINGS)
+    }));
+    return;
+  }
+
+  // Admin Ayarları Kaydet
+  if (req.method === 'POST' && req.url === '/api/admin/settings') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body);
+        if (payload.bot) setAppSetting('bot_settings', payload.bot);
+        if (payload.version) setAppSetting('version_settings', payload.version);
+        if (payload.announcement) setAppSetting('announcement_settings', payload.announcement);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   if (req.method === 'GET' && req.url === '/api/config/all') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
@@ -2156,6 +2288,35 @@ wss.on('connection', (ws) => {
         activeUserSessions.set(data.googleId, { ws, send: player.send, time: Date.now() });
       }
 
+            if (type === 'request_bot_match') {
+        const cat = data.category || player.currentQueueCategory || 'pop_90s';
+        if (publicQueues[cat]) {
+          publicQueues[cat] = publicQueues[cat].filter(p => p.id !== player.id);
+        }
+        if (player.botTimer) clearTimeout(player.botTimer);
+
+        const bot = createBotPlayer();
+        bot.name = 'Bilgisayar';
+        bot.avatar = '🤖';
+        bot.title = 'Yapay Zeka (Bot)';
+        bot.city = 'Müzik Botu';
+        bot.isBot = true;
+
+        const questions = await prepareQuestions(cat, 5);
+        const room = new DuelRoom({
+          id: 'room_' + Date.now(),
+          isCustom: false,
+          settings: { roundCount: 5, roundDurationSec: 10, category: cat },
+          p1: player,
+          p2: bot,
+          questions,
+        });
+
+        activeRooms.set(player.id, room);
+        activeRooms.set(bot.id, room);
+        room.start();
+        return;
+      }
       if (type === 'join_queue') {
         const cooldownSec = checkPlayerCooldown(player);
         if (cooldownSec > 0) {

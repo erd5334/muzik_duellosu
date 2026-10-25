@@ -5,8 +5,10 @@ import '../models/song.dart';
 import '../models/duel_question.dart';
 import '../models/category_model.dart';
 import '../models/daily_song_model.dart';
+import '../models/app_config_model.dart';
 
 class MusicApiService {
+  static const String currentAppVersion = '1.0.8';
   static final MusicApiService _instance = MusicApiService._internal();
   factory MusicApiService() => _instance;
   MusicApiService._internal();
@@ -238,6 +240,32 @@ class MusicApiService {
     ),
   ];
 
+  static Future<DailySongItem> enrichSongWithLiveAudio(DailySongItem song) async {
+    try {
+      final q = Uri.encodeComponent('${song.artist} ${song.title}');
+      final itunesResp = await http
+          .get(Uri.parse('https://itunes.apple.com/search?term=$q&country=TR&media=music&entity=song&limit=1'))
+          .timeout(const Duration(seconds: 4));
+      if (itunesResp.statusCode == 200) {
+        final j = jsonDecode(itunesResp.body);
+        if (j['results'] != null && (j['results'] as List).isNotEmpty) {
+          final t = j['results'][0];
+          final pUrl = t['previewUrl'] as String?;
+          if (pUrl != null && pUrl.isNotEmpty) {
+            final cover = (t['artworkUrl100'] as String? ?? song.artworkUrl).replaceAll('100x100bb', '600x600bb');
+            return DailySongItem(
+              artist: song.artist,
+              title: song.title,
+              artworkUrl: cover,
+              previewUrl: pUrl,
+            );
+          }
+        }
+      }
+    } catch (_) {}
+    return song;
+  }
+
   Future<DailySongData> fetchDailySong() async {
     final now = DateTime.now();
     final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -248,13 +276,23 @@ class MusicApiService {
           .timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return DailySongData.fromJson(data);
+        var daily = DailySongData.fromJson(data);
+        if (daily.song.previewUrl.isEmpty || daily.song.previewUrl.contains('dzcdn.net')) {
+          final enriched = await enrichSongWithLiveAudio(daily.song);
+          daily = DailySongData(
+            date: daily.date,
+            dayNumber: daily.dayNumber,
+            song: enriched,
+            searchPool: daily.searchPool,
+          );
+        }
+        return daily;
       }
     } catch (e) {
       // Çevrimdışı veya sunucu gecikmesinde fallback çalışır
     }
 
-    // Fallback: Deterministic günlük şarkı & Deezer canlı akışı
+    // Fallback: Deterministic günlük şarkı & iTunes canlı akışı
     int hash = 0;
     for (int i = 0; i < dateStr.length; i++) {
       hash = ((hash << 5) - hash) + dateStr.codeUnitAt(i);
@@ -263,22 +301,7 @@ class MusicApiService {
     final index = hash % _curatedDailySongs.length;
     var selected = _curatedDailySongs[index];
 
-    try {
-      final q = Uri.encodeComponent('${selected.artist} ${selected.title}');
-      final dzResp = await http.get(Uri.parse('https://api.deezer.com/search?q=$q&limit=1')).timeout(const Duration(seconds: 3));
-      if (dzResp.statusCode == 200) {
-        final j = jsonDecode(dzResp.body);
-        if (j['data'] != null && (j['data'] as List).isNotEmpty) {
-          final t = j['data'][0];
-          selected = DailySongItem(
-            artist: selected.artist,
-            title: selected.title,
-            artworkUrl: t['album']?['cover_big'] ?? selected.artworkUrl,
-            previewUrl: t['preview'] ?? selected.previewUrl,
-          );
-        }
-      }
-    } catch (_) {}
+    selected = await enrichSongWithLiveAudio(selected);
 
     final searchPool = _curatedDailySongs.map((s) => s.displayName).toList();
 
@@ -288,5 +311,18 @@ class MusicApiService {
       song: selected,
       searchPool: searchPool,
     );
+  }
+
+  Future<AppLiveConfig?> fetchAppConfig() async {
+    try {
+      final response = await http
+          .get(Uri.parse('http://80.253.246.132:6060/api/app-config'))
+          .timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return AppLiveConfig.fromJson(data);
+      }
+    } catch (_) {}
+    return null;
   }
 }

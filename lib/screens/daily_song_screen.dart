@@ -8,6 +8,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:http/http.dart' as http;
 import '../models/daily_song_model.dart';
 import '../providers/game_provider.dart';
+import '../services/music_api_service.dart';
 import '../theme/app_theme.dart';
 
 class DailySongScreen extends StatefulWidget {
@@ -42,28 +43,43 @@ class _DailySongScreenState extends State<DailySongScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final game = context.read<GameProvider>();
-    final url = game.dailySongData?.song.previewUrl ?? '';
-    if (url.isNotEmpty && _audioBytes == null && !_isLoadingAudio) {
-      _cacheAudio(url);
+    final song = game.dailySongData?.song;
+    if (song != null && _audioBytes == null && !_isLoadingAudio) {
+      _cacheAudio(song);
     }
   }
 
-  Future<void> _cacheAudio(String url) async {
+  Future<void> _cacheAudio(DailySongItem song) async {
+    if (_audioBytes != null || _isLoadingAudio) return;
     try {
       if (mounted) setState(() => _isLoadingAudio = true);
-      final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      String url = song.previewUrl;
+      if (url.isEmpty || url.contains('dzcdn.net')) {
+        final enriched = await MusicApiService.enrichSongWithLiveAudio(song);
+        if (enriched.previewUrl.isNotEmpty) {
+          url = enriched.previewUrl;
+        }
+      }
+
+      var resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 6));
+      if (resp.statusCode != 200 || resp.bodyBytes.isEmpty) {
+        final enriched = await MusicApiService.enrichSongWithLiveAudio(song);
+        if (enriched.previewUrl.isNotEmpty && enriched.previewUrl != url) {
+          url = enriched.previewUrl;
+          resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 6));
+        }
+      }
+
       if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
         if (!mounted) return;
         setState(() {
           _audioBytes = resp.bodyBytes;
           _isLoadingAudio = false;
         });
-      } else {
-        if (mounted) setState(() => _isLoadingAudio = false);
+        return;
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingAudio = false);
-    }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingAudio = false);
   }
 
   void _initAudio() {
@@ -127,24 +143,42 @@ class _DailySongScreenState extends State<DailySongScreen> {
         _isPlaying = false;
         _currentPosition = Duration.zero;
       });
-    } else {
-      final previewUrl = data.song.previewUrl;
-      if (previewUrl.isEmpty && _audioBytes == null) return;
+      return;
+    }
 
-      try {
-        await _player.stop();
-        if (_audioBytes != null && (!kIsWeb && !Platform.isIOS)) {
-          await _player.play(BytesSource(_audioBytes!));
-        } else {
-          await _player.play(UrlSource(previewUrl));
+    if (_isLoadingAudio) return;
+
+    try {
+      if (_audioBytes == null) {
+        setState(() => _isLoadingAudio = true);
+        await _cacheAudio(data.song);
+        if (mounted) setState(() => _isLoadingAudio = false);
+      }
+
+      await _player.stop();
+      if (_audioBytes != null && (!kIsWeb && !Platform.isIOS)) {
+        await _player.play(BytesSource(_audioBytes!));
+      } else {
+        String playUrl = data.song.previewUrl;
+        if (playUrl.isEmpty || playUrl.contains('dzcdn.net')) {
+          final enriched = await MusicApiService.enrichSongWithLiveAudio(data.song);
+          playUrl = enriched.previewUrl;
         }
+        if (playUrl.isNotEmpty) {
+          await _player.play(UrlSource(playUrl));
+        }
+      }
+      if (mounted) {
         setState(() {
           _isPlaying = true;
         });
-      } catch (e) {
-        debugPrint('Daily song audio play error: $e');
+      }
+    } catch (e) {
+      debugPrint('Daily song audio play error: $e');
+      if (mounted) {
         setState(() {
           _isPlaying = false;
+          _isLoadingAudio = false;
         });
       }
     }

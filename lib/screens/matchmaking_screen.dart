@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,8 @@ class MatchmakingScreen extends StatefulWidget {
 
 class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTickerProviderStateMixin {
   late AnimationController _radarController;
+  Timer? _searchTimer;
+  int _searchElapsedSeconds = 0;
 
   @override
   void initState() {
@@ -22,10 +25,18 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+
+    _searchTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() {
+        _searchElapsedSeconds++;
+      });
+    });
   }
 
   @override
   void dispose() {
+    _searchTimer?.cancel();
     _radarController.dispose();
     super.dispose();
   }
@@ -245,6 +256,66 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
                     color: AppTheme.textSecondary,
                   ),
                 ),
+                if (_searchElapsedSeconds >= 6) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.amber.withValues(alpha: 0.4),
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.amber.withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Henüz çevrimiçi bir rakip bulunamadı.\nBeklemek istemiyor musun?',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.4,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.amber,
+                              foregroundColor: Colors.black,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => game.requestBotMatch(),
+                            icon: const Text('🤖', style: TextStyle(fontSize: 18)),
+                            label: const Text(
+                              'Bilgisayara Karşı Oyna',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ] else ...[
                 // EŞLEŞME SAĞLANDI
                 Row(

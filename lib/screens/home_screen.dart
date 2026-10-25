@@ -15,6 +15,7 @@ import 'league_screen.dart';
 import '../widgets/party_dialog.dart';
 import '../widgets/profile_titles_dialog.dart';
 import '../widgets/onboarding_dialog.dart';
+import '../widgets/app_notice_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       OnboardingDialog.checkAndShow(context);
+      AppNoticeDialog.checkAndShow(context);
     });
   }
 

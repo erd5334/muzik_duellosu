@@ -126,6 +126,7 @@
         <button class="tab-btn" onclick="switchTab('users')">👥 Kayıtlı Oyuncular</button>
         <button class="tab-btn" onclick="switchTab('season')">🎟️ Sezon & Görevler</button>
         <button class="tab-btn" onclick="switchTab('league')">🏆 Haftalık Ligler</button>
+        <button class="tab-btn" onclick="switchTab('system')">⚙️ Sistem & Bot Ayarları</button>
       </div>
 
       <!-- 1. PLAK KOLEKSİYONU SEKMESİ -->
@@ -690,6 +691,9 @@
       const uEl = document.getElementById('tab-users'); if (uEl) uEl.style.display = tab === 'users' ? 'block' : 'none';
       const seasonEl = document.getElementById('tab-season');
       if (seasonEl) seasonEl.style.display = tab === 'season' ? 'block' : 'none';
+      const systemEl = document.getElementById('tab-system');
+      if (systemEl) systemEl.style.display = tab === 'system' ? 'block' : 'none';
+      if (tab === 'system') loadSystemSettings();
       const leagueEl = document.getElementById('tab-league');
       if (leagueEl) leagueEl.style.display = tab === 'league' ? 'block' : 'none';
       if (tab === 'season') loadSeasonPass();
@@ -1795,6 +1799,138 @@
       })
       .catch(e => showToast('İstek hatası: ' + e.message, 'error'));
     }
+  
+    let currentSystemConfig = { bot: {}, version: {}, announcement: {} };
+
+    function loadSystemSettings() {
+      fetch('/api/admin/settings')
+        .then(r => r.json())
+        .then(data => {
+          currentSystemConfig = data;
+          const bot = data.bot || {};
+          const ver = data.version || {};
+          const ann = data.announcement || {};
+
+          // Bot
+          document.getElementById('bot-difficulty').value = bot.difficulty || 'medium';
+          const accPct = Math.round((bot.accuracy !== undefined ? bot.accuracy : 0.75) * 100);
+          document.getElementById('bot-accuracy').value = accPct;
+          document.getElementById('bot-accuracy-val').innerText = '%' + accPct;
+          const minD = (bot.minDelayMs || 2200) / 1000;
+          document.getElementById('bot-min-delay').value = minD;
+          document.getElementById('bot-min-delay-val').innerText = minD + ' sn';
+          const maxD = (bot.maxDelayMs || 4800) / 1000;
+          document.getElementById('bot-max-delay').value = maxD;
+          document.getElementById('bot-max-delay-val').innerText = maxD + ' sn';
+
+          // Version
+          document.getElementById('update-force-active').checked = !!ver.force_update;
+          document.getElementById('update-min-version').value = ver.min_version || '1.0.8';
+          document.getElementById('update-latest-version').value = ver.latest_version || '1.0.8';
+          document.getElementById('update-title').value = ver.title || 'Yeni Güncelleme Mevcut! 🚀';
+          document.getElementById('update-message').value = ver.message || '';
+
+          // Announcement
+          document.getElementById('ann-enabled').checked = !!ann.enabled;
+          document.getElementById('ann-title').value = ann.title || '';
+          document.getElementById('ann-message').value = ann.message || '';
+          document.getElementById('ann-id').value = ann.id || ('ann_' + Date.now());
+        })
+        .catch(e => console.error('Ayar yükleme hatası:', e));
+    }
+
+    function onBotDifficultyChange() {
+      const mode = document.getElementById('bot-difficulty').value;
+      if (mode === 'easy') {
+        document.getElementById('bot-accuracy').value = 55;
+        document.getElementById('bot-accuracy-val').innerText = '%55';
+        document.getElementById('bot-min-delay').value = 3.5;
+        document.getElementById('bot-min-delay-val').innerText = '3.5 sn';
+        document.getElementById('bot-max-delay').value = 6.5;
+        document.getElementById('bot-max-delay-val').innerText = '6.5 sn';
+      } else if (mode === 'medium') {
+        document.getElementById('bot-accuracy').value = 75;
+        document.getElementById('bot-accuracy-val').innerText = '%75';
+        document.getElementById('bot-min-delay').value = 2.2;
+        document.getElementById('bot-min-delay-val').innerText = '2.2 sn';
+        document.getElementById('bot-max-delay').value = 4.8;
+        document.getElementById('bot-max-delay-val').innerText = '4.8 sn';
+      } else if (mode === 'hard') {
+        document.getElementById('bot-accuracy').value = 92;
+        document.getElementById('bot-accuracy-val').innerText = '%92';
+        document.getElementById('bot-min-delay').value = 1.2;
+        document.getElementById('bot-min-delay-val').innerText = '1.2 sn';
+        document.getElementById('bot-max-delay').value = 2.8;
+        document.getElementById('bot-max-delay-val').innerText = '2.8 sn';
+      }
+    }
+
+    function saveBotSettings() {
+      const payload = {
+        bot: {
+          difficulty: document.getElementById('bot-difficulty').value,
+          accuracy: parseInt(document.getElementById('bot-accuracy').value) / 100,
+          minDelayMs: Math.round(parseFloat(document.getElementById('bot-min-delay').value) * 1000),
+          maxDelayMs: Math.round(parseFloat(document.getElementById('bot-max-delay').value) * 1000),
+          matchWaitSec: 6
+        }
+      };
+      saveSettingsPayload(payload, '🤖 Bot ve Yapay Zeka ayarları başarıyla kaydedildi!');
+    }
+
+    function saveUpdateSettings() {
+      const payload = {
+        version: {
+          force_update: document.getElementById('update-force-active').checked,
+          min_version: document.getElementById('update-min-version').value.trim(),
+          latest_version: document.getElementById('update-latest-version').value.trim(),
+          title: document.getElementById('update-title').value.trim(),
+          message: document.getElementById('update-message').value.trim(),
+          ios_url: (currentSystemConfig.version && currentSystemConfig.version.ios_url) || 'https://apps.apple.com/app/id6738914624',
+          android_url: (currentSystemConfig.version && currentSystemConfig.version.android_url) || 'https://play.google.com/store/apps/details?id=com.eryazilimci.muzik_duellosu'
+        }
+      };
+      saveSettingsPayload(payload, '📲 Zorunlu güncelleme ayarları kaydedildi!');
+    }
+
+    function renewAnnouncementId() {
+      document.getElementById('ann-id').value = 'ann_' + Date.now();
+      showToast('🔄 Yeni Duyuru ID oluşturuldu. Kaydettiğinizde tüm oyunculara tekrar gösterilecek!');
+    }
+
+    function saveAnnouncementSettings() {
+      let annId = document.getElementById('ann-id').value.trim();
+      if (!annId) annId = 'ann_' + Date.now();
+      const payload = {
+        announcement: {
+          enabled: document.getElementById('ann-enabled').checked,
+          id: annId,
+          title: document.getElementById('ann-title').value.trim(),
+          message: document.getElementById('ann-message').value.trim(),
+          button_text: 'Okudum, Anladım'
+        }
+      };
+      saveSettingsPayload(payload, '📢 Duyuru başarıyla kaydedildi ve yayına alındı!');
+    }
+
+    function saveSettingsPayload(payload, successMsg) {
+      fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          showToast(successMsg);
+          loadSystemSettings();
+        } else {
+          alert('Hata: ' + (res.error || 'Kaydedilemedi'));
+        }
+      })
+      .catch(e => alert('Bağlantı hatası: ' + e));
+    }
+
   </script>
 
   <!-- MODAL: GÖREV EKLE / DÜZENLE -->
