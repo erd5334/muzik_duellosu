@@ -128,9 +128,12 @@ class MusicApiService {
     final shuffledPool = List<Song>.from(pool)..shuffle(_rnd);
     final selectedSongs = shuffledPool.take(roundCount).toList();
 
-    // Havuzda 4'ten az farklı sanatçı varsa (Tek Sanatçı / Özel Sanatçı Modu), her zaman Şarkı Adı sorusu sor
+    // Kategoriye girilen sanatçı sayısı 4'ten az ise (Örn: 1-3 sanatçı) veya havuzda az sanatçı varsa, sadece şarkı adı sor
+    final configuredArtists = category.searchQuery.isNotEmpty
+        ? category.searchQuery.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+        : [category.title];
     final uniqueArtists = pool.map((s) => s.artist.toLowerCase()).toSet();
-    final isSingleArtistMode = uniqueArtists.length < 4;
+    final isSingleArtistMode = configuredArtists.length < 4 || uniqueArtists.length < 4;
 
     List<DuelQuestion> questions = [];
 
